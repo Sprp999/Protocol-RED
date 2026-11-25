@@ -5,6 +5,7 @@
   PR.BLOCK_DEFS = [
     { id: "floor_light_1", name: "연회색 바닥", layer: "floor", category: "바닥", w: 1, h: 1, solid: false, color: "#e5e8ee", file: "assets/blocks/floor_light_1.png" },
     { id: "capsule_1", name: "배양 캡슐", layer: "objects", category: "물건", w: 1, h: 2, solid: true, color: "#679fa2", file: "assets/blocks/capsule_1.png" },
+    { id: "panel_1", name: "금속 패널 벽", layer: "objects", category: "벽", w: 1, h: 3, solid: true, color: "#c8ccd4", file: "assets/blocks/panel_1.png" },
   ];
   if (typeof module !== 'undefined') module.exports = PR.BLOCK_DEFS;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

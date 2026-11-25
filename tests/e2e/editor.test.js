@@ -278,3 +278,23 @@ test('큰 그림은 단계별로 줄인 그림이 만들어지고, 목록 그림
   assert.ok(info.smallest < 64);
   assert.notEqual(info.pal, 'pixelated', '크게 줄여 보여주는 그림에 pixelated를 쓰면 깨져 보인다');
 });
+
+test('금속 패널 벽(가로 1칸 × 세로 3칸)은 세 칸을 차지하고 원본 그림 그대로 쓴다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'panel_1');
+  const img = await env.page.evaluate(() => {
+    const i = document.querySelector('.palette-block[data-block-id="panel_1"] img');
+    return i ? { w: i.naturalWidth, h: i.naturalHeight } : null;
+  });
+  assert.deepEqual(img, { w: 667, h: 2000 }, '원본 그림 그대로 쓴다');
+  await clickCell(env.page, 5, 28);
+  assert.equal(await count(env.page), 0, '아래 두 칸이 맵 밖이라 놓이지 않는다');
+  await clickCell(env.page, 5, 27);
+  assert.equal(await count(env.page), 1);
+  const p = await env.page.evaluate(() => window.__editor.getMap().layers.objects[0]);
+  assert.deepEqual([p.b, p.x, p.y, p.w, p.h], ['panel_1', 5, 27, 1, 3]);
+  await env.page.click('[data-tool=erase]');
+  await clickCell(env.page, 5, 29);
+  assert.equal(await count(env.page), 0, '아래 칸을 눌러도 전체가 지워진다');
+  assert.deepEqual(env.errors, []);
+});
