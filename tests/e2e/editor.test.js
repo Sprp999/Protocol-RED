@@ -357,3 +357,21 @@ test('예전에 물건 층에 저장된 벽 블록이 있는 맵도 열리고 �
   });
   assert.deepEqual(layers, { walls: 1, objects: 0 });
 });
+
+test('벽 윗면(천장) 블록은 벽 층의 막히는 블록이고, 그 위에 물건을 겹쳐 놓을 수 있다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'wall_top_1');
+  const img = await env.page.evaluate(() => {
+    const i = document.querySelector('.palette-block[data-block-id="wall_top_1"] img');
+    return i ? { w: i.naturalWidth, h: i.naturalHeight } : null;
+  });
+  assert.deepEqual(img, { w: 1254, h: 1254 }, '원본 그림 그대로 쓴다');
+  const def = await env.page.evaluate(() => window.PR.Blocks.get('wall_top_1'));
+  assert.deepEqual([def.layer, def.w, def.h, def.solid], ['walls', 1, 1, true]);
+  await dragCells(env.page, 3, 3, 6, 3);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walls.length), 4);
+  await pick(env.page, 'capsule_1');
+  await clickCell(env.page, 4, 3);
+  assert.equal(await count(env.page), 5, '벽 윗면 위에 물건을 놓아도 벽이 지워지지 않는다');
+  assert.deepEqual(env.errors, []);
+});
