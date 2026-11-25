@@ -99,3 +99,4 @@ a.btn-open:hover { border-color: var(--accent-2); }
   background: rgba(20,20,24,0.92); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; }
 #zoom-label { min-width: 48px; text-align: center; }
 @media (max-width: 700px) { .sidebar { width: 150px; } .palette { grid-template-columns: repeat(2, 1fr); } }
+.modal .note { color: var(--muted); margin: 12px 0 0; font-size: 12px; }

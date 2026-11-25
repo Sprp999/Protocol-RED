@@ -26,4 +26,36 @@ async function cellToScreen(page, cx, cy) {
   }, [cx, cy]);
 }
 
-module.exports = { launch, pageUrl, cellToScreen, ROOT };
+async function openEditor(page, { width = 40, height = 30 } = {}) {
+  await page.goto(pageUrl('index.html'));
+  const id = await page.evaluate(([w, h]) => window.__store.createMap({ name: '시험', width: w, height: h }).id, [width, height]);
+  await page.goto(pageUrl('editor.html') + '?id=' + id);
+  await page.waitForSelector('#map-canvas');
+  await page.waitForFunction(() => window.__editor && window.__editor.getMap());
+  return id;
+}
+const count = (page) => page.evaluate(() => {
+  const m = window.__editor.getMap();
+  return m.layers.floor.length + m.layers.objects.length;
+});
+async function pick(page, blockId) {
+  const def = await page.evaluate((id) => window.PR.Blocks.get(id), blockId);
+  await page.click(`[data-layer=${def.layer}]`);
+  const tab = page.locator(`.palette-tab[data-category="${def.category}"]`);
+  if (await tab.count()) await tab.click();
+  await page.click(`.palette-block[data-block-id="${blockId}"]`);
+}
+async function clickCell(page, x, y) {
+  const p = await cellToScreen(page, x, y);
+  await page.mouse.click(p.x, p.y);
+}
+async function dragCells(page, x0, y0, x1, y1, { release = true } = {}) {
+  const a = await cellToScreen(page, x0, y0);
+  const b = await cellToScreen(page, x1, y1);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 12 });
+  if (release) await page.mouse.up();
+}
+
+module.exports = { launch, pageUrl, cellToScreen, openEditor, count, pick, clickCell, dragCells, ROOT };

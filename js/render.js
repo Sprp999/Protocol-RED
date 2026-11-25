@@ -52,7 +52,7 @@
   }
 
   function drawMap(ctx, map, view, opts) {
-    const { viewW, viewH, showGrid, ghost } = opts;
+    const { viewW, viewH, showGrid, ghost, rect } = opts;
     const VM = root.PR.ViewMath;
     const cellPx = TILE * view.scale;
     ctx.imageSmoothingEnabled = false;
@@ -108,6 +108,18 @@
           Math.round(view.x + (gp.x + gp.w) * cellPx), Math.round(view.y + (gp.y + gp.h) * cellPx), '#ff2020');
         ctx.globalAlpha = 1;
       }
+    }
+    if (rect) {
+      const rx0 = Math.round(view.x + Math.min(rect.x0, rect.x1) * cellPx);
+      const ry0 = Math.round(view.y + Math.min(rect.y0, rect.y1) * cellPx);
+      const rx1 = Math.round(view.x + (Math.max(rect.x0, rect.x1) + 1) * cellPx);
+      const ry1 = Math.round(view.y + (Math.max(rect.y0, rect.y1) + 1) * cellPx);
+      ctx.globalAlpha = 0.18;
+      fillCell(ctx, rx0, ry0, rx1, ry1, '#ffffff');
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(rx0 + 1, ry0 + 1, rx1 - rx0 - 2, ry1 - ry0 - 2);
     }
     return { drawn };
   }

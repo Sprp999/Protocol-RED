@@ -29,6 +29,13 @@
     return;
   }
 
+  function readGridPref() {
+    try {
+      return window.localStorage.getItem('pr.grid') !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
   const history = PR.History.createHistory(100);
   const canvas = $('map-canvas');
   const ctx = canvas.getContext('2d');
@@ -39,17 +46,19 @@
     layer: 'floor',
     blockId: null,
     category: null,
-    showGrid: true,
+    showGrid: readGridPref(),
     space: false,
     panning: null,
     stroke: null,
+    rect: null,
     hover: null,
     fitted: false,
     cssW: 0,
     cssH: 0,
   };
-  window.__editor = { getView: () => state.view, getMap: () => state.map };
+  window.__editor = { getView: () => state.view, getMap: () => state.map, getSelection: () => state.rect };
   $('map-title').textContent = map.name;
+  $('btn-grid').classList.toggle('active', state.showGrid);
   document.title = map.name + ' — Protocol-RED 맵 편집';
 
   // ---------- 그리기 ----------
@@ -71,7 +80,7 @@
       const { x, y } = state.hover;
       ghost = { block, x, y, valid: x >= 0 && y >= 0 && x + block.w <= map.width && y + block.h <= map.height };
     }
-    PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost });
+    PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost, rect: state.rect });
     $('zoom-label').textContent = Math.round(state.view.scale * 100) + '%';
   }
   function resizeCanvas() {
@@ -149,7 +158,7 @@
     state.blockId = id;
     state.layer = b.layer;
     state.category = b.category;
-    state.tool = 'brush';
+    if (state.tool !== 'brush' && state.tool !== 'rect') state.tool = 'brush';
     syncUi();
   }
   function renderPalette() {
@@ -241,6 +250,9 @@
   };
   $('btn-grid').onclick = () => {
     state.showGrid = !state.showGrid;
+    try {
+      window.localStorage.setItem('pr.grid', state.showGrid ? '1' : '0');
+    } catch (e) { /* 저장이 안 돼도 동작에는 문제없다 */ }
     $('btn-grid').classList.toggle('active', state.showGrid);
     requestDraw();
   };
@@ -254,6 +266,11 @@
     }
     if (state.tool === 'erase') return MM.eraseAt(map, state.layer, cell.x, cell.y);
     return null;
+  }
+  function commitOne(patch) {
+    if (!patch) return;
+    history.commit(patch);
+    afterChange();
   }
   function strokeTo(cell) {
     const st = state.stroke;
@@ -293,8 +310,16 @@
       return;
     }
     if (e.button !== 0) return;
+    const cell = VM.screenToCell(state.view, p.x, p.y);
+    if (state.tool === 'start') return commitOne(MM.toggleStart(map, cell.x, cell.y));
+    if (state.tool === 'exit') return commitOne(MM.toggleExit(map, cell.x, cell.y));
+    if (state.tool === 'rect') {
+      state.rect = { x0: cell.x, y0: cell.y, x1: cell.x, y1: cell.y };
+      requestDraw();
+      return;
+    }
     state.stroke = { patches: [], last: null };
-    strokeTo(VM.screenToCell(state.view, p.x, p.y));
+    strokeTo(cell);
   });
   canvas.addEventListener('pointermove', (e) => {
     const p = localPoint(e);
@@ -302,6 +327,8 @@
     if (state.panning) {
       state.view = VM.panBy(state.view, p.x - state.panning.x, p.y - state.panning.y);
       state.panning = { x: p.x, y: p.y };
+    } else if (state.rect) {
+      state.rect = { ...state.rect, x1: state.hover.x, y1: state.hover.y };
     } else if (state.stroke) {
       strokeTo(state.hover);
     }
@@ -315,6 +342,14 @@
       requestDraw();
     }
     endStroke();
+    endRect();
+  }
+  function endRect() {
+    const r = state.rect;
+    state.rect = null;
+    requestDraw();
+    const b = state.blockId && PR.Blocks.get(state.blockId);
+    if (r && b) commitOne(MM.fillRect(map, b.layer, { id: b.id, w: b.w, h: b.h }, r.x0, r.y0, r.x1, r.y1));
   }
   canvas.addEventListener('pointerup', pointerEnd);
   canvas.addEventListener('pointercancel', pointerEnd);
@@ -349,6 +384,52 @@
   window.addEventListener('blur', () => {
     state.space = false;
   });
+
+  // ---------- 크기 변경 ----------
+  $('btn-resize').onclick = () => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.innerHTML =
+      '<div class="modal"><h2>맵 크기 변경</h2>' +
+      '<div class="row"><div><label for="resize-width">가로(칸)</label><input type="number" id="resize-width"></div>' +
+      '<div><label for="resize-height">세로(칸)</label><input type="number" id="resize-height"></div></div>' +
+      '<p class="note">크기를 바꾸면 되돌리기 기록이 지워져요. 줄이면 밖으로 나가는 블록은 사라져요.</p>' +
+      '<div class="error" id="resize-error"></div>' +
+      '<div class="actions"><button id="resize-cancel">취소</button><button id="resize-ok" class="primary">바꾸기</button></div></div>';
+    document.body.appendChild(backdrop);
+    const wIn = backdrop.querySelector('#resize-width');
+    const hIn = backdrop.querySelector('#resize-height');
+    wIn.value = map.width;
+    hIn.value = map.height;
+    wIn.focus();
+    const close = () => backdrop.remove();
+    backdrop.querySelector('#resize-cancel').onclick = close;
+    backdrop.querySelector('#resize-ok').onclick = () => {
+      const w = Number(wIn.value);
+      const h = Number(hIn.value);
+      const max = MM.MAX_SIZE;
+      const err = backdrop.querySelector('#resize-error');
+      if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1 || w > max || h > max) {
+        err.textContent = '가로·세로는 1~' + max + ' 사이의 정수로 입력하세요.';
+        return;
+      }
+      const dropped = MM.countDroppedByResize(map, w, h);
+      if (dropped > 0 && !window.confirm('크기를 줄이면 ' + dropped + '개가 잘려서 사라져요. 계속할까요?')) return;
+      const next = MM.resizeMap(map, w, h);
+      Object.assign(map, { width: next.width, height: next.height, layers: next.layers, start: next.start, exits: next.exits, nextUid: next.nextUid });
+      map._idx = next._idx;
+      history.clear();
+      updateUndoButtons();
+      state.view = VM.fitView(map.width, map.height, state.cssW, state.cssH);
+      scheduleSave();
+      requestDraw();
+      close();
+    };
+    backdrop.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') backdrop.querySelector('#resize-ok').click();
+      if (e.key === 'Escape') close();
+    });
+  };
 
   PR.Blocks.loadImages(() => {
     renderPalette();

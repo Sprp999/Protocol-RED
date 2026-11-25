@@ -10,6 +10,7 @@
   <header class="editor-top">
     <a id="btn-back" href="index.html">← 맵 목록</a>
     <strong id="map-title"></strong>
+    <button id="btn-resize">크기 변경</button>
     <span class="spacer"></span>
     <button id="btn-undo" title="되돌리기 (Ctrl+Z)">되돌리기</button>
     <button id="btn-redo" title="다시하기 (Ctrl+Y)">다시하기</button>
@@ -23,7 +24,10 @@
         <h3>도구</h3>
         <div class="btn-row">
           <button data-tool="brush" class="active">붓</button>
+          <button data-tool="rect">사각형</button>
           <button data-tool="erase">지우개</button>
+          <button data-tool="start" title="시작 지점 놓기/옮기기">시작</button>
+          <button data-tool="exit" title="출구 놓기/없애기">출구</button>
         </div>
       </section>
       <section>

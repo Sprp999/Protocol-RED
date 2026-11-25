@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { launch, pageUrl, cellToScreen } = require('./helpers.js');
+const { launch, pageUrl, cellToScreen, openEditor, count, pick, clickCell, dragCells } = require('./helpers.js');
 
 let env;
 test.beforeEach(async () => {
@@ -10,46 +10,6 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   await env.browser.close();
 });
-
-async function openEditor(page, { width = 40, height = 30, prepare } = {}) {
-  await page.goto(pageUrl('index.html'));
-  const id = await page.evaluate(([w, h, prep]) => {
-    const m = window.__store.createMap({ name: '시험', width: w, height: h });
-    if (prep) {
-      // eslint-disable-next-line no-new-func
-      new Function('map', 'PR', prep)(m, window.PR);
-      window.__store.saveMap(m);
-    }
-    return m.id;
-  }, [width, height, prepare || null]);
-  await page.goto(pageUrl('editor.html') + '?id=' + id);
-  await page.waitForSelector('#map-canvas');
-  await page.waitForFunction(() => window.__editor && window.__editor.getMap());
-  return id;
-}
-const count = (page) => page.evaluate(() => {
-  const m = window.__editor.getMap();
-  return m.layers.floor.length + m.layers.objects.length;
-});
-async function pick(page, blockId) {
-  const def = await page.evaluate((id) => window.PR.Blocks.get(id), blockId);
-  await page.click(`[data-layer=${def.layer}]`);
-  const tab = page.locator(`.palette-tab[data-category="${def.category}"]`);
-  if (await tab.count()) await tab.click();
-  await page.click(`.palette-block[data-block-id="${blockId}"]`);
-}
-async function clickCell(page, x, y) {
-  const p = await cellToScreen(page, x, y);
-  await page.mouse.click(p.x, p.y);
-}
-async function dragCells(page, x0, y0, x1, y1) {
-  const a = await cellToScreen(page, x0, y0);
-  const b = await cellToScreen(page, x1, y1);
-  await page.mouse.move(a.x, a.y);
-  await page.mouse.down();
-  await page.mouse.move(b.x, b.y, { steps: 12 });
-  await page.mouse.up();
-}
 
 test('열면 캔버스가 보이고 맵 전체가 화면 안에 들어온다', async () => {
   await openEditor(env.page);
