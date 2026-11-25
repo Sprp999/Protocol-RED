@@ -109,7 +109,6 @@
       info.appendChild(el('span', 'badge badge-broken', '읽을 수 없음'));
     } else {
       info.appendChild(el('span', 'card-size', meta.width + '×' + meta.height + '칸'));
-      if (!meta.complete) info.appendChild(el('span', 'badge badge-incomplete', '미완성'));
     }
     card.appendChild(info);
 

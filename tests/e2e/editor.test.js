@@ -233,3 +233,12 @@ test('블록이 하나도 없는 층은 안내 문구를 보이고 오류 없이
     await bare.browser.close();
   }
 });
+
+test('시작·출구 도구는 화면에 없고, 새 맵은 아무것도 없이 시작한다', async () => {
+  await openEditor(env.page);
+  assert.equal(await env.page.locator('[data-tool=start]').count(), 0);
+  assert.equal(await env.page.locator('[data-tool=exit]').count(), 0);
+  assert.equal(await count(env.page), 0);
+  const tools = await env.page.locator('[data-tool]').evaluateAll((els) => els.map((e) => e.dataset.tool));
+  assert.deepEqual(tools, ['brush', 'rect', 'erase']);
+});

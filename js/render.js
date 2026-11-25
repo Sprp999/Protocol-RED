@@ -40,17 +40,6 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawMarker(ctx, pt, text, color, view, cellPx) {
-    const x0 = Math.round(view.x + pt.x * cellPx);
-    const y0 = Math.round(view.y + pt.y * cellPx);
-    const x1 = Math.round(view.x + (pt.x + 1) * cellPx);
-    const y1 = Math.round(view.y + (pt.y + 1) * cellPx);
-    ctx.globalAlpha = 0.85;
-    fillCell(ctx, x0, y0, x1, y1, color);
-    ctx.globalAlpha = 1;
-    label(ctx, text, x0, y0, x1, y1, '#fff');
-  }
-
   function drawMap(ctx, map, view, opts) {
     const { viewW, viewH, showGrid, ghost, rect } = opts;
     const VM = root.PR.ViewMath;
@@ -62,7 +51,8 @@
     ctx.fillRect(0, 0, viewW, viewH);
     const mx = Math.round(view.x), my = Math.round(view.y);
     const mw = Math.round(map.width * cellPx), mh = Math.round(map.height * cellPx);
-    ctx.fillStyle = '#101010';
+    // 맵 안쪽도 배경과 같은 검정이다. 맵의 경계는 테두리선과 격자선으로 보인다.
+    ctx.fillStyle = '#000';
     ctx.fillRect(mx, my, mw, mh);
 
     const r = VM.visibleCellRange(view, viewW, viewH, map.width, map.height);
@@ -75,8 +65,6 @@
           drawn++;
         }
       }
-      if (map.start) drawMarker(ctx, map.start, 'S', '#1faa4a', view, cellPx);
-      for (const e of map.exits) drawMarker(ctx, e, 'E', '#d23b3b', view, cellPx);
 
       if (showGrid && cellPx >= 8) {
         ctx.strokeStyle = 'rgba(255,255,255,0.14)';

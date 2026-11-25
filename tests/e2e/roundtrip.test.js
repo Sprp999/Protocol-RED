@@ -29,10 +29,6 @@ test('내보낸 파일을 새 브라우저에서 불러오면 같은 맵이 열�
     await pick(a.page, 'test_wall');
     await dragCells(a.page, 0, 0, 10, 0);
     await a.page.keyboard.press('Control+z');
-    await a.page.click('[data-tool=start]');
-    await clickCell(a.page, 2, 8);
-    await a.page.click('[data-tool=exit]');
-    await clickCell(a.page, 22, 14);
     const before = await a.page.evaluate(() => JSON.stringify(window.PR.MapFormat.serializeMap(window.__editor.getMap())));
     await a.page.waitForFunction(() => document.getElementById('save-status').textContent.includes('저장됨'));
     await a.page.click('#btn-back');
@@ -44,7 +40,6 @@ test('내보낸 파일을 새 브라우저에서 불러오면 같은 맵이 열�
     await b.page.goto(pageUrl('index.html'));
     await b.page.setInputFiles('#input-import', file);
     await b.page.waitForSelector('.map-card');
-    assert.equal(await b.page.locator('.badge-incomplete').count(), 0);
     await b.page.click('.map-card .btn-open');
     await b.page.waitForFunction(() => window.__editor && window.__editor.getMap());
     const after = await b.page.evaluate(() => JSON.stringify(window.PR.MapFormat.serializeMap(window.__editor.getMap())));

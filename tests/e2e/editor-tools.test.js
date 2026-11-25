@@ -35,54 +35,15 @@ test('사각형 도구는 영역을 한 번에 채우고 되돌리기 한 번에
   assert.equal(await count(env.page), 4);
 });
 
-test('지우개를 끌면 한 번의 되돌리기로 복구되고, 시작·출구 표시는 지우지 않는다', async () => {
+test('지우개를 끌면 한 번의 되돌리기로 복구된다', async () => {
   await openEditor(env.page);
   await pick(env.page, 'test_floor_gray');
   await dragCells(env.page, 2, 2, 6, 2);
-  await env.page.click('[data-tool=start]');
-  await clickCell(env.page, 4, 2);
   await env.page.click('[data-tool=erase]');
   await dragCells(env.page, 2, 2, 6, 2);
-  const after = await mapInfo(env.page);
-  assert.equal(after.n, 0);
-  assert.deepEqual(after.start, { x: 4, y: 2 });
+  assert.equal((await mapInfo(env.page)).n, 0);
   await env.page.keyboard.press('Control+z');
   assert.equal(await count(env.page), 5);
-});
-
-test('시작 지점은 이동·제거, 출구는 추가·제거가 되고 되돌릴 수 있다', async () => {
-  await openEditor(env.page);
-  await env.page.click('[data-tool=start]');
-  await clickCell(env.page, 1, 1);
-  assert.deepEqual((await mapInfo(env.page)).start, { x: 1, y: 1 });
-  await clickCell(env.page, 5, 5);
-  assert.deepEqual((await mapInfo(env.page)).start, { x: 5, y: 5 });
-  await clickCell(env.page, 5, 5);
-  assert.equal((await mapInfo(env.page)).start, null);
-  await env.page.click('[data-tool=exit]');
-  await clickCell(env.page, 7, 7);
-  await clickCell(env.page, 8, 8);
-  assert.equal((await mapInfo(env.page)).exits.length, 2);
-  await clickCell(env.page, 7, 7);
-  assert.deepEqual((await mapInfo(env.page)).exits, [{ x: 8, y: 8 }]);
-  await env.page.keyboard.press('Control+z');
-  assert.equal((await mapInfo(env.page)).exits.length, 2);
-});
-
-test('시작과 출구를 모두 놓으면 목록에서 미완성 표시가 사라진다', async () => {
-  await openEditor(env.page);
-  await env.page.goto(pageUrl('index.html'));
-  assert.equal(await env.page.locator('.badge-incomplete').count(), 1);
-  await env.page.click('.map-card .btn-open');
-  await env.page.waitForFunction(() => window.__editor && window.__editor.getMap());
-  await env.page.click('[data-tool=start]');
-  await clickCell(env.page, 1, 1);
-  await env.page.click('[data-tool=exit]');
-  await clickCell(env.page, 3, 3);
-  await env.page.waitForFunction(() => document.getElementById('save-status').textContent.includes('저장됨'));
-  await env.page.click('#btn-back');
-  await env.page.waitForSelector('.map-card');
-  assert.equal(await env.page.locator('.badge-incomplete').count(), 0);
 });
 
 test('격자 켜기/끄기 상태가 새로고침 뒤에도 유지된다', async () => {

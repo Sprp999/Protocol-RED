@@ -158,7 +158,7 @@
     state.blockId = id;
     state.layer = b.layer;
     state.category = b.category;
-    if (state.tool !== 'brush' && state.tool !== 'rect') state.tool = 'brush';
+    if (state.tool === 'erase') state.tool = 'brush';
     syncUi();
   }
   function renderPalette() {
@@ -318,8 +318,6 @@
     }
     if (e.button !== 0) return;
     const cell = VM.screenToCell(state.view, p.x, p.y);
-    if (state.tool === 'start') return commitOne(MM.toggleStart(map, cell.x, cell.y));
-    if (state.tool === 'exit') return commitOne(MM.toggleExit(map, cell.x, cell.y));
     if (state.tool === 'rect') {
       state.rect = { x0: cell.x, y0: cell.y, x1: cell.x, y1: cell.y };
       requestDraw();

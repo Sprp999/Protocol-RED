@@ -46,7 +46,7 @@ test('새 맵을 만들면 이름·크기·미완성 표시가 보이고, 잘못
   assert.equal((await card.locator('.card-name').textContent()).trim(), '지하창고');
   assert.match(await card.locator('.card-size').textContent(), /30×20/);
   assert.equal((await card.locator('.card-index').textContent()).trim(), '1');
-  assert.equal(await card.locator('.badge-incomplete').count(), 1);
+  assert.equal(await card.locator('.badge-incomplete').count(), 0, '미완성 표시는 쓰지 않는다');
   assert.equal(await env.page.locator('#empty-hint').isVisible(), false);
   assert.deepEqual(env.errors, []);
 });
