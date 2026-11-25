@@ -2,7 +2,7 @@
   const PR = (root.PR = root.PR || {});
 
   const LAYERS = ['floor', 'objects'];
-  const MAX_SIZE = 200;
+  const MAX_SIZE = 1000;
 
   function checkSize(width, height) {
     for (const v of [width, height]) {
@@ -23,6 +23,8 @@
       };
     }
     Object.defineProperty(map, '_idx', { value: idx, enumerable: false, writable: true });
+    // 맵이 바뀔 때마다 커지는 번호. 그림 캐시가 낡았는지 알아보는 데 쓴다.
+    Object.defineProperty(map, '_rev', { value: 0, enumerable: false, writable: true });
   }
 
   function addPlacement(map, layer, p) {
@@ -34,6 +36,7 @@
       for (let xx = p.x; xx < p.x + p.w; xx++) ix.cells[yy * map.width + xx] = p.uid;
     }
     if (p.uid >= map.nextUid) map.nextUid = p.uid + 1;
+    map._rev++;
   }
 
   function removePlacement(map, layer, uid) {
@@ -53,6 +56,7 @@
     }
     ix.pos.delete(uid);
     ix.byUid.delete(uid);
+    map._rev++;
   }
 
   function createMap({ id, name, width, height }) {
@@ -81,6 +85,28 @@
     if (!inBounds(map, x, y)) return null;
     const uid = map._idx[layer].cells[y * map.width + x];
     return uid ? map._idx[layer].byUid.get(uid) : null;
+  }
+
+  function revision(map) {
+    return map._rev;
+  }
+
+  // 사각형(칸 좌표, 끝 칸 포함)에 걸친 배치를 한 번씩만 돌려준다. 맵 밖은 잘라서 본다.
+  function placementsInRect(map, layer, x0, y0, x1, y1) {
+    const out = [];
+    const { cells, byUid } = map._idx[layer];
+    const ax = Math.max(0, x0), ay = Math.max(0, y0);
+    const bx = Math.min(map.width - 1, x1), by = Math.min(map.height - 1, y1);
+    for (let y = ay; y <= by; y++) {
+      for (let x = ax; x <= bx; x++) {
+        const uid = cells[y * map.width + x];
+        if (!uid) continue;
+        const p = byUid.get(uid);
+        // 걸친 배치는 사각형 안에서 가장 왼쪽 위 칸에서만 한 번 담는다
+        if (x === Math.max(p.x, ax) && y === Math.max(p.y, ay)) out.push(p);
+      }
+    }
+    return out;
   }
 
   function countPlacements(map) {
@@ -231,6 +257,14 @@
     return out;
   }
 
+  // 같은 맵 객체를 다른 크기의 새 내용으로 바꾼다 (크기 변경용)
+  function replaceWith(map, next) {
+    const rev = map._rev + 1;
+    Object.assign(map, { width: next.width, height: next.height, layers: next.layers, start: next.start, exits: next.exits, nextUid: next.nextUid });
+    map._idx = next._idx;
+    map._rev = rev;
+  }
+
   PR.MapModel = {
     LAYERS,
     MAX_SIZE,
@@ -245,6 +279,9 @@
     revertPatch,
     combinePatches,
     placementAt,
+    placementsInRect,
+    revision,
+    replaceWith,
     countPlacements,
     isComplete,
     resizeMap,

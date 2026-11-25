@@ -103,3 +103,6 @@ a.btn-open:hover { border-color: var(--accent-2); }
 .modal .note { color: var(--muted); margin: 12px 0 0; font-size: 12px; }
 
 .palette-empty { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin: 4px 0; line-height: 1.5; }
+
+.size-row { align-items: center; }
+.size-row .times { color: var(--muted); font-size: 18px; }

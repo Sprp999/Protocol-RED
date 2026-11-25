@@ -421,8 +421,7 @@
       const dropped = MM.countDroppedByResize(map, w, h);
       if (dropped > 0 && !window.confirm('크기를 줄이면 ' + dropped + '개가 잘려서 사라져요. 계속할까요?')) return;
       const next = MM.resizeMap(map, w, h);
-      Object.assign(map, { width: next.width, height: next.height, layers: next.layers, start: next.start, exits: next.exits, nextUid: next.nextUid });
-      map._idx = next._idx;
+      MM.replaceWith(map, next);
       history.clear();
       updateUndoButtons();
       state.view = VM.fitView(map.width, map.height, state.cssW, state.cssH);

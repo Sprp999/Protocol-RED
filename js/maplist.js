@@ -49,10 +49,10 @@
 
   function drawThumb(card) {
     const id = card.dataset.id;
-    const map = store.loadMap(id);
+    const data = store.loadSerialized(id);
     const canvas = card.querySelector('canvas');
-    if (map && canvas) {
-      PR.Render.drawThumbnail(canvas, map);
+    if (data && canvas) {
+      PR.Render.drawThumbnailData(canvas, data);
       drawn.add(id);
     }
   }
@@ -186,8 +186,11 @@
     modal.innerHTML =
       '<h2>새 맵 만들기</h2>' +
       '<label for="new-name">이름</label><input type="text" id="new-name">' +
-      '<div class="row"><div><label for="new-width">가로(칸)</label><input type="number" id="new-width" value="40"></div>' +
-      '<div><label for="new-height">세로(칸)</label><input type="number" id="new-height" value="30"></div></div>' +
+      '<label>맵 크기 (가로 × 세로, 칸 수)</label>' +
+      '<div class="row size-row"><input type="number" id="new-width" value="40" min="1" max="' + PR.MapModel.MAX_SIZE + '" aria-label="가로 칸 수">' +
+      '<span class="times">×</span>' +
+      '<input type="number" id="new-height" value="30" min="1" max="' + PR.MapModel.MAX_SIZE + '" aria-label="세로 칸 수"></div>' +
+      '<p class="note">가로·세로 모두 1~' + PR.MapModel.MAX_SIZE + '칸까지 정할 수 있어요. 크게 만들수록 컴퓨터가 느려질 수 있어요.</p>' +
       '<div class="error" id="new-error"></div>' +
       '<div class="actions"><button id="new-cancel">취소</button><button id="new-ok" class="primary">만들기</button></div>';
     backdrop.appendChild(modal);
@@ -249,8 +252,5 @@
     render();
   };
 
-  PR.Blocks.loadImages(() => {
-    for (const card of grid.querySelectorAll('.map-card')) if (drawn.has(card.dataset.id)) drawThumb(card);
-  });
   render();
 })();

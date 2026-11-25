@@ -67,7 +67,7 @@ test('잘못된 데이터는 MapFormatError와 한국어 메시지로 거부된�
     배열: [],
     '버전 2': { ...good(), version: 2 },
     '가로 0': { ...good(), width: 0 },
-    '가로 201': { ...good(), width: 201 },
+    '가로 1001': { ...good(), width: 1001 },
     '항목 길이 틀림': { ...good(), floor: [['grass', 0, 0]] },
     '좌표 소수': { ...good(), floor: [['grass', 0.5, 0, 1]] },
     '좌표 음수': { ...good(), floor: [['grass', -1, 0, 1]] },

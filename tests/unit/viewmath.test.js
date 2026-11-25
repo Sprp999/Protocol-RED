@@ -51,3 +51,11 @@ test('visibleCellRange는 화면에 보이는 칸을 맵 범위 안으로 제한
   const wide = V.visibleCellRange({ scale: 0.1, x: 0, y: 0 }, 5000, 5000, 40, 30);
   assert.deepEqual(wide, { x0: 0, y0: 0, x1: 39, y1: 29 });
 });
+
+test('1000×1000 맵도 전체 보기에서 화면 안에 들어온다', () => {
+  const v = V.fitView(1000, 1000, 1000, 700);
+  const size = 1000 * 64 * v.scale;
+  assert.ok(v.scale >= V.MIN_SCALE);
+  assert.ok(size <= 700 - 48 + 1e-6, `맵이 ${size}px로 화면보다 크다`);
+  assert.equal(V.MIN_SCALE, 0.01);
+});

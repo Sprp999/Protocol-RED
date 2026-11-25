@@ -95,13 +95,13 @@ test('층에 따라 팔레트가 바뀌고, 지우개는 선택한 층만 지운
   assert.deepEqual(left, [1, 0]);
 });
 
-test('확대·축소 버튼은 400%와 4%에서 멈춘다', async () => {
+test('확대·축소 버튼은 400%와 1%에서 멈춘다', async () => {
   await openEditor(env.page);
   const label = () => env.page.textContent('#zoom-label');
   for (let i = 0; i < 40; i++) await env.page.click('#btn-zoom-in');
   assert.equal((await label()).trim(), '400%');
   for (let i = 0; i < 60; i++) await env.page.click('#btn-zoom-out');
-  assert.equal((await label()).trim(), '4%');
+  assert.equal((await label()).trim(), '1%');
   await env.page.click('#btn-fit');
   const fit = await env.page.evaluate(() => {
     const v = window.__editor.getView();

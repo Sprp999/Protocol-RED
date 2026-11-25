@@ -3,6 +3,7 @@
 
   const ORDER_KEY = 'pr.order';
   const MAP_PREFIX = 'pr.map.';
+  const META_PREFIX = 'pr.meta.';
   const BROKEN_NAME = '(읽을 수 없는 맵)';
 
   function failure(err) {
@@ -20,6 +21,7 @@
     const MM = () => root.PR.MapModel;
     const MF = () => root.PR.MapFormat;
     const key = (id) => MAP_PREFIX + id;
+    const metaKey = (id) => META_PREFIX + id;
 
     function readOrder() {
       try {
@@ -41,12 +43,45 @@
       }
     }
 
+    // 큰 맵을 매번 통째로 읽지 않도록, 이름·크기는 맵과 함께 따로 적어 둔다
+    function readMeta(id) {
+      try {
+        const m = JSON.parse(backend.getItem(metaKey(id)));
+        if (m && typeof m.name === 'string' && Number.isInteger(m.width) && Number.isInteger(m.height)) return m;
+      } catch (e) { /* 아래에서 맵을 직접 읽어 채운다 */ }
+      return null;
+    }
+    function writeMeta(map) {
+      try {
+        backend.setItem(metaKey(map.id), JSON.stringify({ name: map.name, width: map.width, height: map.height, complete: MM().isComplete(map) }));
+      } catch (e) { /* 정보를 못 적어도 맵 저장에는 영향이 없다 */ }
+    }
+
     function listMeta() {
       return readOrder().map((id) => {
+        const cached = readMeta(id);
+        if (cached && backend.getItem(key(id)) !== null) {
+          return { id, name: cached.name, width: cached.width, height: cached.height, complete: !!cached.complete, broken: false };
+        }
         const m = loadMap(id);
         if (!m) return { id, name: BROKEN_NAME, width: 0, height: 0, complete: false, broken: true };
+        writeMeta(m);
         return { id, name: m.name, width: m.width, height: m.height, complete: MM().isComplete(m), broken: false };
       });
+    }
+
+    // 맵으로 만들지 않고 저장된 데이터만 확인해서 돌려준다 (작은 그림용)
+    function loadSerialized(id) {
+      try {
+        const raw = backend.getItem(key(id));
+        if (raw === null || raw === undefined) return null;
+        const d = JSON.parse(raw);
+        if (!d || d.version !== 1 || !Number.isInteger(d.width) || !Number.isInteger(d.height) ||
+            !Array.isArray(d.floor) || !Array.isArray(d.objects)) return null;
+        return d;
+      } catch (e) {
+        return null;
+      }
     }
 
     function newId() {
@@ -59,6 +94,11 @@
 
     function writeMap(map) {
       backend.setItem(key(map.id), JSON.stringify(MF().serializeMap(map)));
+      writeMeta(map);
+    }
+    function removeMap(id) {
+      backend.removeItem(key(id));
+      backend.removeItem(metaKey(id));
     }
 
     function saveMap(map) {
@@ -70,7 +110,7 @@
           try {
             writeOrder([...order, map.id]);
           } catch (e) {
-            backend.removeItem(key(map.id));
+            removeMap(map.id);
             throw e;
           }
         }
@@ -105,7 +145,7 @@
         order.splice(at < 0 ? order.length : at + 1, 0, copy.id);
         writeOrder(order);
       } catch (e) {
-        backend.removeItem(key(copy.id));
+        removeMap(copy.id);
         const err = new Error(failure(e).message);
         err.reason = failure(e).reason;
         throw err;
@@ -114,7 +154,7 @@
     }
 
     function deleteMap(id) {
-      backend.removeItem(key(id));
+      removeMap(id);
       writeOrder(readOrder().filter((x) => x !== id));
     }
 
@@ -169,13 +209,13 @@
         }
         writeOrder([...order, ...written]);
       } catch (e) {
-        for (const id of written) backend.removeItem(key(id));
+        for (const id of written) removeMap(id);
         return failure(e);
       }
       return { ok: true, added: written.length };
     }
 
-    return { listMeta, loadMap, saveMap, createMap, duplicateMap, deleteMap, moveMap, exportAll, importAll };
+    return { listMeta, loadMap, loadSerialized, saveMap, createMap, duplicateMap, deleteMap, moveMap, exportAll, importAll };
   }
 
   PR.Store = { createStore };

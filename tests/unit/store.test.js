@@ -171,3 +171,58 @@ test('불러오던 중 저장이 실패하면 방금 추가한 맵도 되돌린�
   assert.deepEqual(dst.listMeta(), []);
   assert.equal([...be.data.keys()].filter((k) => k.startsWith('pr.map.')).length, 0);
 });
+
+test('목록은 맵 내용을 읽지 않고 미리 적어 둔 정보(이름·크기)만 읽는다', () => {
+  const be = memBackend();
+  const store = S.createStore(be);
+  const m = completeMap(store, '큰 맵 후보');
+  // 맵 내용을 일부러 읽을 수 없게 만들어도, 목록이 내용을 읽지 않는다면 정보는 그대로 나온다
+  be.setItem('pr.map.' + m.id, '{내용을 읽으면 오류');
+  const meta = store.listMeta();
+  assert.equal(meta.length, 1);
+  assert.deepEqual([meta[0].name, meta[0].width, meta[0].height, meta[0].complete, meta[0].broken], ['큰 맵 후보', 10, 8, true, false]);
+});
+
+test('예전에 저장되어 정보가 없는 맵도 목록에 나오고 정보가 채워진다', () => {
+  const be = memBackend();
+  const store = S.createStore(be);
+  const m = completeMap(store, '옛 맵');
+  be.removeItem('pr.meta.' + m.id);
+  assert.deepEqual(names(store), ['옛 맵']);
+  assert.notEqual(be.getItem('pr.meta.' + m.id), null, '다음부터는 빠르게 읽도록 정보를 적어 둔다');
+});
+
+test('삭제하면 정보도 함께 지워진다', () => {
+  const be = memBackend();
+  const store = S.createStore(be);
+  const m = completeMap(store, '지울 맵');
+  store.deleteMap(m.id);
+  assert.equal(be.getItem('pr.meta.' + m.id), null);
+});
+
+test('loadSerialized는 저장된 데이터를 맵으로 만들지 않고 그대로 돌려주고, 깨졌으면 null', () => {
+  const be = memBackend();
+  const store = S.createStore(be);
+  const m = completeMap(store, '데이터');
+  const data = store.loadSerialized(m.id);
+  assert.equal(data.version, 1);
+  assert.equal(data.width, 10);
+  assert.ok(Array.isArray(data.objects));
+  assert.equal(store.loadSerialized('없음'), null);
+  be.setItem('pr.map.x', '{깨짐');
+  assert.equal(store.loadSerialized('x'), null);
+  be.setItem('pr.map.y', JSON.stringify({ version: 1, width: 3 }));
+  assert.equal(store.loadSerialized('y'), null);
+});
+
+test('맵을 1000×1000 크기로 저장하고 다시 읽을 수 있다', () => {
+  const be = memBackend();
+  const store = S.createStore(be);
+  const m = store.createMap({ name: '엄청 큰 맵', width: 1000, height: 1000 });
+  M.fillRect(m, 'floor', { id: 'g', w: 1, h: 1 }, 0, 0, 999, 999);
+  assert.equal(store.saveMap(m).ok, true);
+  assert.ok(be.getItem('pr.map.' + m.id).length < 30000, '바닥을 가득 채워도 저장 크기는 작다');
+  assert.equal(M.countPlacements(store.loadMap(m.id)), 1000000);
+  const meta = store.listMeta()[0];
+  assert.deepEqual([meta.width, meta.height], [1000, 1000]);
+});

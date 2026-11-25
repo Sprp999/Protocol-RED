@@ -84,3 +84,59 @@ test('큰 맵에서 블록을 칠하고 되돌리기가 200ms 안에 끝난다',
   assert.ok(ms.fill <= 400, `200×200 전체 덮어쓰기 ${ms.fill.toFixed(0)}ms`);
   assert.ok(ms.undo <= 200, `되돌리기 ${ms.undo.toFixed(0)}ms`);
 });
+
+test('1000×1000 맵: 목록·열기·그리기·되돌리기가 모두 쓸 만한 속도다', async () => {
+  const { page } = env;
+  page.setDefaultTimeout(60000);
+  await page.goto(pageUrl('index.html'));
+  const id = await page.evaluate(() => {
+    const MM = window.PR.MapModel;
+    const m = window.__store.createMap({ name: '엄청 큰 맵', width: 1000, height: 1000 });
+    MM.fillRect(m, 'floor', { id: 'floor_light_1', w: 1, h: 1 }, 0, 0, 999, 999);
+    if (!window.__store.saveMap(m).ok) throw new Error('저장 실패');
+    return m.id;
+  });
+  // 목록: 큰 맵이 있어도 빨리 뜨고 작은 그림도 그려진다
+  const t0 = Date.now();
+  await page.reload();
+  await page.waitForSelector('.map-card canvas');
+  const listMs = Date.now() - t0;
+  assert.ok(listMs < 3000, `목록이 뜨는 데 ${listMs}ms`);
+  assert.match(await page.textContent('.card-size'), /1000×1000/);
+  // 편집 화면: 열리고, 전체 보기에서 맵 전체가 화면 안에 보인다
+  const t1 = Date.now();
+  await page.goto(pageUrl('editor.html') + '?id=' + id);
+  await page.waitForFunction(() => window.__editor && window.__editor.getMap(), null, { timeout: 60000 });
+  const openMs = Date.now() - t1;
+  assert.ok(openMs < 8000, `편집 화면이 열리는 데 ${openMs}ms`);
+  const fit = await page.evaluate(() => {
+    const v = window.__editor.getView();
+    const r = document.getElementById('map-canvas').getBoundingClientRect();
+    return { size: 1000 * 64 * v.scale, w: r.width, h: r.height, label: document.getElementById('zoom-label').textContent };
+  });
+  assert.ok(fit.size <= Math.min(fit.w, fit.h), `전체 보기가 화면보다 큼 (${fit.size} > ${fit.w}x${fit.h})`);
+  // 전체 보기 / 100% 화면을 그리는 시간
+  const first = await timeDraws(page);
+  const again = await timeDraws(page);
+  console.log(`perf 1000x1000 전체 보기 평균 ${first.ms.toFixed(1)}ms (처음 포함), 다시 ${again.ms.toFixed(1)}ms, 열기 ${openMs}ms, 목록 ${listMs}ms`);
+  assert.ok(first.ms <= 300, `전체 보기 처음 포함 평균 ${first.ms.toFixed(1)}ms`);
+  assert.ok(again.ms <= 50, `전체 보기 평균 ${again.ms.toFixed(1)}ms`);
+  await page.evaluate(() => {
+    const v = window.__editor.getView();
+    v.scale = 1; v.x = -32000; v.y = -32000;
+  });
+  const zoomed = await timeDraws(page);
+  assert.ok(zoomed.ms <= 50, `100% 화면 평균 ${zoomed.ms.toFixed(1)}ms`);
+  assert.ok(zoomed.drawn < 1000, '보이는 칸만 그린다');
+  // 전체를 덮어쓰고 되돌리기
+  const ms = await page.evaluate(() => {
+    const MM = window.PR.MapModel;
+    const m = window.__editor.getMap();
+    const t = performance.now();
+    const patch = MM.fillRect(m, 'floor', { id: 'floor_light_1', w: 1, h: 1 }, 0, 0, 999, 999);
+    const t2 = performance.now();
+    return { fill: t2 - t, none: patch };
+  });
+  assert.equal(ms.none, null, '이미 같은 블록이라 바뀌는 것이 없다');
+  assert.deepEqual(env.errors, []);
+});

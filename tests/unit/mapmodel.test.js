@@ -23,7 +23,7 @@ test('createMap은 두 층이 비어 있고 한 칸이 64인 맵을 만든다', 
 });
 
 test('createMap은 범위를 벗어나거나 정수가 아닌 크기를 거부한다', () => {
-  for (const [w, h] of [[0, 5], [201, 5], [3.5, 5], [5, 0], [5, 201], [5, 2.5]]) {
+  for (const [w, h] of [[0, 5], [1001, 5], [3.5, 5], [5, 0], [5, 1001], [5, 2.5]]) {
     assert.throws(() => M.createMap({ id: 'x', name: 'x', width: w, height: h }), RangeError, `${w}x${h}`);
   }
 });
@@ -204,4 +204,54 @@ test('resizeMap은 안 맞는 블록과 표시를 잘라내고, countDroppedByRe
   assert.equal(M.placementAt(big, 'objects', 38, 1).b, 'house');
   assert.equal(M.countPlacements(m), 3, '원본은 바뀌지 않는다');
   assert.throws(() => M.resizeMap(m, 0, 5), RangeError);
+});
+
+test('맵은 가로·세로 최대 1000칸까지 만들 수 있다', () => {
+  const m = M.createMap({ id: 'big', name: '큰 맵', width: 1000, height: 1000 });
+  assert.equal(m.width, 1000);
+  assert.equal(M.MAX_SIZE, 1000);
+  assert.ok(M.placeBlock(m, 'floor', blk('g'), 999, 999));
+  assert.equal(M.placementAt(m, 'floor', 999, 999).b, 'g');
+});
+
+test('placementsInRect는 사각형에 걸친 배치를 한 번씩만 돌려준다', () => {
+  const m = newMap();
+  M.fillRect(m, 'floor', blk('g'), 0, 0, 9, 9);
+  M.placeBlock(m, 'objects', blk('house', 3, 2), 4, 4);
+  M.placeBlock(m, 'objects', blk('crate'), 20, 20);
+  assert.equal(M.placementsInRect(m, 'floor', 2, 2, 4, 3).length, 6);
+  const objs = M.placementsInRect(m, 'objects', 5, 5, 6, 5);
+  assert.equal(objs.length, 1, '걸친 구조물은 한 번만');
+  assert.equal(objs[0].b, 'house');
+  assert.equal(M.placementsInRect(m, 'objects', 0, 0, 3, 3).length, 0);
+  assert.equal(M.placementsInRect(m, 'floor', -5, -5, 1, 1).length, 4, '맵 밖은 잘라서 본다');
+  assert.equal(M.placementsInRect(m, 'floor', 100, 100, 120, 120).length, 0);
+});
+
+test('revision은 맵이 바뀔 때마다 커지고 되돌려도 달라진다', () => {
+  const m = newMap();
+  const r0 = M.revision(m);
+  const p = M.placeBlock(m, 'floor', blk('g'), 1, 1);
+  const r1 = M.revision(m);
+  assert.ok(r1 > r0);
+  M.revertPatch(m, p);
+  assert.ok(M.revision(m) > r1);
+  const r2 = M.revision(m);
+  M.applyPatch(m, p);
+  assert.ok(M.revision(m) > r2);
+});
+
+test('replaceWith는 같은 맵 객체를 새 크기의 내용으로 바꾼다', () => {
+  const m = newMap();
+  M.placeBlock(m, 'floor', blk('g'), 5, 5);
+  M.placeBlock(m, 'objects', blk('crate'), 39, 29);
+  const r0 = M.revision(m);
+  M.replaceWith(m, M.resizeMap(m, 20, 20));
+  assert.deepEqual([m.width, m.height], [20, 20]);
+  assert.equal(M.countPlacements(m), 1);
+  assert.equal(M.placementAt(m, 'floor', 5, 5).b, 'g');
+  assert.equal(M.placementAt(m, 'objects', 19, 19), null);
+  assert.ok(M.revision(m) > r0);
+  assert.ok(M.placeBlock(m, 'floor', blk('g'), 19, 19), '새 크기에서 색인이 맞게 동작한다');
+  assert.equal(M.placeBlock(m, 'floor', blk('g'), 20, 20), null);
 });

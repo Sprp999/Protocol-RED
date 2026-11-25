@@ -90,7 +90,7 @@ test('잘리는 것이 없으면 확인 없이 바로 바뀌고, 범위 밖 크�
   await env.page.fill('#resize-width', '0');
   await env.page.click('#resize-ok');
   assert.notEqual((await env.page.textContent('#resize-error')).trim(), '');
-  await env.page.fill('#resize-width', '201');
+  await env.page.fill('#resize-width', '1001');
   await env.page.click('#resize-ok');
   assert.equal((await mapInfo(env.page)).w, 40);
   await env.page.fill('#resize-width', '60');

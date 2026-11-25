@@ -34,7 +34,7 @@ test('처음에는 카드가 없고 안내 문구가 보인다', async () => {
 test('새 맵을 만들면 이름·크기·미완성 표시가 보이고, 잘못된 크기는 막힌다', async () => {
   await env.page.click('#btn-new-map');
   await env.page.fill('#new-name', '지하창고');
-  await env.page.fill('#new-width', '201');
+  await env.page.fill('#new-width', '1001');
   await env.page.fill('#new-height', '20');
   await env.page.click('#new-ok');
   assert.notEqual((await env.page.textContent('#new-error')).trim(), '');

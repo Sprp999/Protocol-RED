@@ -1,7 +1,7 @@
 (function (root) {
   const PR = (root.PR = root.PR || {});
 
-  const MIN_SCALE = 0.04;
+  const MIN_SCALE = 0.01;
   const MAX_SCALE = 4;
   const TILE = 64;
 

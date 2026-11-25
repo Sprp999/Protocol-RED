@@ -1,6 +1,9 @@
 (function (root) {
   const PR = (root.PR = root.PR || {});
   const TILE = 64;
+  const MAGENTA = '#ff00ff';
+  // 한 칸이 화면에서 이 크기(px)보다 작으면 칸마다 그리지 않고 맵 전체를 한 장의 작은 그림으로 늘려 붙인다
+  const RASTER_BELOW = 3;
 
   function fillCell(ctx, x0, y0, x1, y1, color) {
     ctx.fillStyle = color;
@@ -26,7 +29,7 @@
     const def = B.get(p.b);
     ctx.globalAlpha = alpha;
     if (!def) {
-      fillCell(ctx, x0, y0, x1, y1, '#ff00ff');
+      fillCell(ctx, x0, y0, x1, y1, MAGENTA);
       label(ctx, '?', x0, y0, x1, y1, '#220022');
     } else {
       const img = B.image(p.b);
@@ -40,9 +43,52 @@
     ctx.globalAlpha = 1;
   }
 
+  // ---------- 아주 작게 볼 때: 맵 전체를 1칸=1픽셀 그림 한 장으로 ----------
+  const rasters = new WeakMap(); // 맵 → { rev, canvas }
+  const rgbCache = new Map();
+
+  function rgbOf(blockId) {
+    if (rgbCache.has(blockId)) return rgbCache.get(blockId);
+    const def = root.PR.Blocks.get(blockId);
+    const hex = (def ? def.color : MAGENTA).replace('#', '');
+    const n = parseInt(hex, 16);
+    const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    rgbCache.set(blockId, rgb);
+    return rgb;
+  }
+
+  function rasterOf(map) {
+    const rev = root.PR.MapModel.revision(map);
+    const cached = rasters.get(map);
+    if (cached && cached.rev === rev && cached.canvas.width === map.width && cached.canvas.height === map.height) {
+      return cached.canvas;
+    }
+    const canvas = cached ? cached.canvas : document.createElement('canvas');
+    canvas.width = map.width;
+    canvas.height = map.height;
+    const g = canvas.getContext('2d');
+    const image = g.createImageData(map.width, map.height); // 처음엔 전부 투명(=배경 검정)
+    const data = image.data;
+    for (const layer of ['floor', 'objects']) {
+      for (const p of map.layers[layer]) {
+        const [r, gr, b] = rgbOf(p.b);
+        for (let yy = p.y; yy < p.y + p.h; yy++) {
+          let i = (yy * map.width + p.x) * 4;
+          for (let xx = 0; xx < p.w; xx++, i += 4) {
+            data[i] = r; data[i + 1] = gr; data[i + 2] = b; data[i + 3] = 255;
+          }
+        }
+      }
+    }
+    g.putImageData(image, 0, 0);
+    rasters.set(map, { rev, canvas });
+    return canvas;
+  }
+
   function drawMap(ctx, map, view, opts) {
     const { viewW, viewH, showGrid, ghost, rect } = opts;
     const VM = root.PR.ViewMath;
+    const MM = root.PR.MapModel;
     const cellPx = TILE * view.scale;
     // 확대할 때는 픽셀이 번지지 않게, 작게 줄일 때는 점무늬가 생기지 않게 부드럽게 그린다
     ctx.imageSmoothingEnabled = cellPx < 24;
@@ -58,11 +104,15 @@
     const r = VM.visibleCellRange(view, viewW, viewH, map.width, map.height);
     let drawn = 0;
     if (r.x1 >= r.x0 && r.y1 >= r.y0) {
-      for (const layer of ['floor', 'objects']) {
-        for (const p of map.layers[layer]) {
-          if (p.x + p.w - 1 < r.x0 || p.x > r.x1 || p.y + p.h - 1 < r.y0 || p.y > r.y1) continue;
-          drawPlacement(ctx, p, view, cellPx, 1);
-          drawn++;
+      if (cellPx < RASTER_BELOW) {
+        ctx.drawImage(rasterOf(map), 0, 0, map.width, map.height, view.x, view.y, map.width * cellPx, map.height * cellPx);
+        drawn = MM.countPlacements(map);
+      } else {
+        for (const layer of ['floor', 'objects']) {
+          for (const p of MM.placementsInRect(map, layer, r.x0, r.y0, r.x1, r.y1)) {
+            drawPlacement(ctx, p, view, cellPx, 1);
+            drawn++;
+          }
         }
       }
 
@@ -114,12 +164,32 @@
     return { drawn };
   }
 
-  function drawThumbnail(canvas, map) {
+  // 맵 목록의 작은 그림: 맵을 만들지 않고 저장된 데이터(줄 단위)에서 바로 그린다
+  function drawThumbnailData(canvas, data) {
     const ctx = canvas.getContext('2d');
-    const view = root.PR.ViewMath.fitView(map.width, map.height, canvas.width, canvas.height, 4);
-    drawMap(ctx, map, view, { viewW: canvas.width, viewH: canvas.height, showGrid: false });
+    const margin = 4;
+    const s = Math.min((canvas.width - margin * 2) / data.width, (canvas.height - margin * 2) / data.height);
+    const ox = (canvas.width - data.width * s) / 2;
+    const oy = (canvas.height - data.height * s) / 2;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(Math.round(ox), Math.round(oy), Math.round(data.width * s), Math.round(data.height * s));
+    const B = root.PR.Blocks;
+    for (const layer of ['floor', 'objects']) {
+      for (const [b, x, y, n] of data[layer]) {
+        const size = B.sizeOf(b) || { w: 1, h: 1 };
+        const def = B.get(b);
+        const x0 = Math.floor(ox + x * s), x1 = Math.ceil(ox + (x + n * size.w) * s);
+        const y0 = Math.floor(oy + y * s), y1 = Math.ceil(oy + (y + size.h) * s);
+        fillCell(ctx, x0, y0, x1, y1, def ? def.color : MAGENTA);
+      }
+    }
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(Math.round(ox) - 0.5, Math.round(oy) - 0.5, Math.round(data.width * s) + 1, Math.round(data.height * s) + 1);
   }
 
-  PR.Render = { drawMap, drawThumbnail };
+  PR.Render = { drawMap, drawThumbnailData };
   if (typeof module !== 'undefined') module.exports = PR.Render;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
