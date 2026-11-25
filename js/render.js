@@ -32,12 +32,14 @@
       fillCell(ctx, x0, y0, x1, y1, MAGENTA);
       label(ctx, '?', x0, y0, x1, y1, '#220022');
     } else {
-      const img = B.image(p.b);
-      if (cellPx < 6 || !img) {
+      const level = B.imageFor(p.b, x1 - x0);
+      if (cellPx < 6 || !level) {
         fillCell(ctx, x0, y0, x1, y1, def.color);
-        if (!img && cellPx >= 6) label(ctx, def.name.charAt(0), x0, y0, x1, y1, 'rgba(255,255,255,0.7)');
+        if (!level && cellPx >= 6) label(ctx, def.name.charAt(0), x0, y0, x1, y1, 'rgba(255,255,255,0.7)');
       } else {
-        ctx.drawImage(img, x0, y0, x1 - x0, y1 - y0);
+        // 줄여서 그릴 때는 부드럽게(깨짐 방지), 원본보다 크게 늘릴 때만 픽셀이 번지지 않게
+        ctx.imageSmoothingEnabled = x1 - x0 < level.w;
+        ctx.drawImage(level.src, x0, y0, x1 - x0, y1 - y0);
       }
     }
     ctx.globalAlpha = 1;
@@ -90,8 +92,7 @@
     const VM = root.PR.ViewMath;
     const MM = root.PR.MapModel;
     const cellPx = TILE * view.scale;
-    // 확대할 때는 픽셀이 번지지 않게, 작게 줄일 때는 점무늬가 생기지 않게 부드럽게 그린다
-    ctx.imageSmoothingEnabled = cellPx < 24;
+    ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, viewW, viewH);

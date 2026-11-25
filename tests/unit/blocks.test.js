@@ -38,7 +38,7 @@ test('진짜 블록 목록에는 임시 블록이 없고 모두 그림 파일이
   }
 });
 
-test('그림 파일이 있는 블록은 파일이 실제로 있고 크기가 칸 수에 맞는 PNG다', () => {
+test('그림 파일이 있는 블록은 파일이 실제로 있고, 칸 수와 같은 비율의 PNG다 (크기는 클수록 좋다)', () => {
   const withFile = real.filter((b) => b.file);
   assert.ok(withFile.length >= 1);
   for (const b of withFile) {
@@ -46,8 +46,9 @@ test('그림 파일이 있는 블록은 파일이 실제로 있고 크기가 칸
     assert.ok(fs.existsSync(full), `${b.id}: ${b.file} 파일이 없어요`);
     const buf = fs.readFileSync(full);
     assert.equal(buf.toString('latin1', 1, 4), 'PNG', `${b.id}: PNG 파일이 아니에요`);
-    assert.equal(buf.readUInt32BE(16), b.w * 64, `${b.id}: 가로 크기`);
-    assert.equal(buf.readUInt32BE(20), b.h * 64, `${b.id}: 세로 크기`);
+    const pw = buf.readUInt32BE(16), ph = buf.readUInt32BE(20);
+    assert.ok(pw >= b.w * 64 && ph >= b.h * 64, `${b.id}: 그림이 한 칸 64픽셀보다 작아요 (${pw}x${ph})`);
+    assert.ok(Math.abs(pw / b.w - ph / b.h) <= Math.max(pw / b.w, ph / b.h) * 0.01, `${b.id}: 그림 비율(${pw}x${ph})이 ${b.w}x${b.h}칸과 달라요`);
   }
 });
 
@@ -70,3 +71,36 @@ test('byLayer와 categories는 층별로 나뉘고 블록이 없는 층은 비�
   assert.deepEqual(B.categories('objects'), []);
   globalThis.PR.BLOCK_DEFS = saved;
 }));
+
+// ---- 큰 그림을 단계별로 줄여 두었다가 화면 크기에 맞는 것을 고른다 (밉맵) ----
+const fakeImg = (w, h) => ({ width: w, height: h });
+const fakeFactory = (w, h) => ({ width: w, height: h, getContext: () => ({ drawImage() {} }) });
+
+test('buildLevels는 큰 그림을 절반씩 줄인 단계를 만든다', () => {
+  const levels = B.buildLevels(fakeImg(887, 1774), fakeFactory);
+  assert.deepEqual(levels.map((l) => [l.w, l.h]), [[887, 1774], [444, 887], [222, 444], [111, 222], [56, 111], [28, 56]]);
+  assert.equal(levels[0].src.width, 887, '첫 단계는 원본 그림 그대로');
+});
+
+test('buildLevels는 캔버스를 만들 수 없으면 원본 한 단계만 돌려준다', () => {
+  const levels = B.buildLevels(fakeImg(100, 100), null);
+  assert.equal(levels.length, 1);
+});
+
+test('pickLevel은 필요한 크기보다 크거나 같은 단계 중 가장 작은 것을 고른다', () => {
+  const levels = B.buildLevels(fakeImg(1024, 1024), fakeFactory);
+  assert.equal(B.pickLevel(levels, 1024).w, 1024);
+  assert.equal(B.pickLevel(levels, 600).w, 1024);
+  assert.equal(B.pickLevel(levels, 512).w, 512);
+  assert.equal(B.pickLevel(levels, 100).w, 128);
+  assert.equal(B.pickLevel(levels, 5000).w, 1024, '원본보다 크게 그릴 땐 원본');
+});
+
+test('setImage로 등록한 그림은 image가 원본을, imageFor가 크기에 맞는 단계를 돌려준다', () => {
+  const img = fakeImg(256, 256);
+  B.setImage('x_test', img);
+  assert.equal(B.image('x_test'), img);
+  assert.equal(B.imageFor('x_test', 64).w, 256, '캔버스가 없는 환경에서는 원본 하나');
+  assert.equal(B.imageFor('없는그림', 64), null);
+  assert.equal(B.image('없는그림'), null);
+});

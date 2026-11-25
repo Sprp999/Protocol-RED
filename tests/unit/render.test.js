@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 require('../../data/blocks.js');
 const M = require('../../js/mapmodel.js');
 require('../../js/viewmath.js');
-require('../../js/blocks.js');
+const B = require('../../js/blocks.js');
 const R = require('../../js/render.js');
 
 // 아무 그리기 명령이나 받아 주고, 부드럽게 그리기 설정(imageSmoothingEnabled)이 마지막에 어떻게 되었는지만 기록하는 가짜 캔버스
@@ -28,14 +28,34 @@ const draw = (scale) => {
   return { smoothing: ctx.imageSmoothingEnabled, drawn: res.drawn };
 };
 
-test('작게 줄여 그릴 때는 부드럽게 그려서 점무늬가 생기지 않는다', () => {
-  assert.equal(draw(0.125).smoothing, true);
-  assert.equal(draw(0.3).smoothing, true);
+// 그림을 실제로 그릴 때(drawImage)의 부드럽게 그리기 설정과 쓴 그림을 기록하는 가짜 캔버스
+function imageCtx() {
+  const drawn = [];
+  const ctx = new Proxy({ imageSmoothingEnabled: null }, {
+    get: (t, k) => (k === 'drawImage' ? (img, ...a) => drawn.push({ img, smooth: t.imageSmoothingEnabled, w: a[2] }) : k in t ? t[k] : () => {}),
+    set: (t, k, v) => { t[k] = v; return true; },
+  });
+  return { ctx, drawn };
+}
+const drawWithImage = (img, scale) => {
+  B.setImage('floor_light_1', img);
+  const { ctx, drawn } = imageCtx();
+  R.drawMap(ctx, map(), { scale, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
+  return drawn;
+};
+
+test('큰 원본 그림을 작게 줄여 그릴 때는 부드럽게 그린다 (깨지고 점무늬가 생기지 않게)', () => {
+  for (const scale of [0.2, 0.5, 1, 2]) {
+    const drawn = drawWithImage({ width: 1254, height: 1254 }, scale);
+    assert.equal(drawn.length, 1, `scale ${scale}`);
+    assert.equal(drawn[0].smooth, true, `scale ${scale}`);
+  }
 });
 
-test('크게 그릴 때는 픽셀이 번지지 않게 그린다', () => {
-  assert.equal(draw(1).smoothing, false);
-  assert.equal(draw(2).smoothing, false);
+test('작은 그림을 크게 늘려 그릴 때는 픽셀이 번지지 않게 그린다', () => {
+  const drawn = drawWithImage({ width: 64, height: 64 }, 2);
+  assert.equal(drawn[0].smooth, false);
+  assert.equal(drawn[0].w, 128);
 });
 
 test('보이는 배치만 센다', () => {

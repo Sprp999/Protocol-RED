@@ -59,3 +59,18 @@ test('wholeEntry는 큰 구조물을 칸 수로 환산한 항목 하나로 만�
   assert.equal(entry.layer, 'objects');
   assert.equal(entry.file, 'assets/blocks/house_1.png');
 });
+
+test('wholeEntry는 size를 직접 주면 그림이 아무리 커도 그 칸 수로 등록한다', () => {
+  const capsule = makePng(887, 1774, () => [10, 200, 10, 255]);
+  const entry = T.wholeEntry(capsule, 64, { id: 'c', name: '캡슐', layer: 'objects', category: '물건', solid: true, file: 'assets/blocks/c.png', size: { w: 1, h: 2 } });
+  assert.deepEqual([entry.w, entry.h], [1, 2]);
+});
+
+test('checkImage는 칸 수를 알려주면 비율이 맞는지만 보고, 큰 그림의 64 배수 경고는 내지 않는다', () => {
+  const ok = makePng(887, 1774, (x, y) => (x === 5 && y === 5 ? [1, 2, 3, 255] : clear));
+  assert.deepEqual(T.checkImage(ok, 64, { w: 1, h: 2 }), []);
+  const wrong = makePng(887, 1000, (x, y) => (x === 5 && y === 5 ? [1, 2, 3, 255] : clear));
+  assert.ok(T.checkImage(wrong, 64, { w: 1, h: 2 }).some((w) => w.includes('비율')));
+  const small = makePng(40, 80, (x, y) => (x === 5 && y === 5 ? [1, 2, 3, 255] : clear));
+  assert.ok(T.checkImage(small, 64, { w: 1, h: 2 }).some((w) => w.includes('작')), '한 칸 64픽셀보다 작으면 알려준다');
+});

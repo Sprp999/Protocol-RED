@@ -5,10 +5,20 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { PNG } = require('pngjs');
 
-function checkImage(png, cell = 64) {
+// expected 를 주면({w, h}: 차지하는 칸 수) 그림 크기가 아니라 가로세로 비율만 본다.
+// 그림은 클수록 좋아요(원본 그대로 쓰면 줄여서 그릴 때 훨씬 깔끔해요). 한 칸 64픽셀보다 작을 때만 알려준다.
+function checkImage(png, cell = 64, expected = null) {
   const warnings = [];
   const { width, height, data } = png;
-  if (width % cell !== 0 || height % cell !== 0) {
+  if (expected) {
+    const perW = width / expected.w, perH = height / expected.h;
+    if (Math.abs(perW - perH) > Math.max(perW, perH) * 0.01) {
+      warnings.push(`그림 비율(${width}×${height})이 ${expected.w}×${expected.h}칸과 맞지 않아요.`);
+    }
+    if (perW < cell || perH < cell) {
+      warnings.push(`그림이 너무 작아요(${width}×${height}). 한 칸에 ${cell}픽셀 이상이면 좋아요.`);
+    }
+  } else if (width % cell !== 0 || height % cell !== 0) {
     warnings.push(`그림 크기가 ${width}×${height}예요. 가로·세로가 ${cell}의 배수가 아니에요.`);
   }
   const alphaAt = (x, y) => data[(y * width + x) * 4 + 3];
@@ -57,8 +67,8 @@ function wholeEntry(png, cell, info) {
     name: info.name,
     layer: info.layer,
     category: info.category,
-    w: Math.round(png.width / cell),
-    h: Math.round(png.height / cell),
+    w: info.size ? info.size.w : Math.round(png.width / cell),
+    h: info.size ? info.size.h : Math.round(png.height / cell),
     solid: info.solid,
     color: averageColor(png).color,
     file: info.file,
@@ -80,7 +90,8 @@ function printUsage() {
     '  --layer objects      floor(바닥) 또는 objects(물건)',
     '  --category 벽         팔레트 탭 이름',
     '  --solid true|false   막힘 여부 (기본: 물건은 true, 바닥은 false)',
-    '  --whole              큰 구조물 한 장을 자르지 않고 그대로 등록',
+    '  --whole              큰 구조물 한 장을 자르지 않고 원본 크기 그대로 등록',
+    '  --size 1x2           (--whole과 함께) 차지하는 칸 수 가로x세로. 안 주면 그림 크기÷64',
     '  --out assets/blocks  저장 폴더',
   ].join('\n'));
 }
@@ -107,7 +118,9 @@ function main(argv) {
     return;
   }
   const png = PNG.sync.read(fs.readFileSync(opts.file));
-  const warnings = checkImage(png, opts.cell);
+  const sizeMatch = opts.size && /^(\d+)x(\d+)$/.exec(opts.size);
+  const size = sizeMatch ? { w: Number(sizeMatch[1]), h: Number(sizeMatch[2]) } : null;
+  const warnings = checkImage(png, opts.cell, opts.whole ? size : null);
   for (const w of warnings) console.log('⚠ ' + w);
   const solid = opts.solid === undefined ? opts.layer === 'objects' : opts.solid === 'true';
   const category = opts.category || (opts.layer === 'floor' ? '바닥' : '물건');
@@ -118,7 +131,7 @@ function main(argv) {
   if (opts.whole) {
     const id = opts.prefix;
     fs.writeFileSync(path.join(opts.out, id + '.png'), PNG.sync.write(png));
-    entries.push(wholeEntry(png, opts.cell, { id, name: names[0] || id, layer: opts.layer, category, solid, file: toFile(id) }));
+    entries.push(wholeEntry(png, opts.cell, { id, name: names[0] || id, layer: opts.layer, category, solid, file: toFile(id), size }));
   } else {
     let n = 0;
     for (const t of sliceSheet(png, opts.cell)) {

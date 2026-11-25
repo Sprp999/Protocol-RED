@@ -186,13 +186,13 @@ test('그림이 있는 블록은 팔레트와 맵에 그림으로 보인다', as
     const img = document.querySelector('.palette-block[data-block-id="floor_light_1"] img');
     return img ? { w: img.naturalWidth, h: img.naturalHeight } : null;
   });
-  assert.deepEqual(sw, { w: 64, h: 64 });
+  assert.deepEqual(sw, { w: 1254, h: 1254 }, '원본 그림 그대로 쓴다');
   await clickCell(env.page, 3, 3);
   const loaded = await env.page.evaluate(() => {
     const img = window.PR.Blocks.image('floor_light_1');
     return img ? img.naturalWidth : 0;
   });
-  assert.equal(loaded, 64);
+  assert.equal(loaded, 1254);
   assert.equal(await count(env.page), 1);
   assert.deepEqual(env.errors, []);
 });
@@ -251,7 +251,7 @@ test('배양 캡슐(가로 1칸 × 세로 2칸)은 두 칸을 차지하고 그�
     const i = document.querySelector('.palette-block[data-block-id="capsule_1"] img');
     return i ? { w: i.naturalWidth, h: i.naturalHeight } : null;
   });
-  assert.deepEqual(img, { w: 64, h: 128 });
+  assert.deepEqual(img, { w: 887, h: 1774 }, '원본 그림 그대로 쓴다');
   await clickCell(env.page, 10, 29);
   assert.equal(await count(env.page), 0, '맨 아래 칸에서는 아래가 맵 밖이라 놓이지 않는다');
   await clickCell(env.page, 10, 20);
@@ -263,4 +263,18 @@ test('배양 캡슐(가로 1칸 × 세로 2칸)은 두 칸을 차지하고 그�
   await clickCell(env.page, 10, 21);
   assert.equal(await count(env.page), 0);
   assert.deepEqual(env.errors, []);
+});
+
+test('큰 그림은 단계별로 줄인 그림이 만들어지고, 목록 그림은 뭉개지지 않게 보인다', async () => {
+  await openEditor(env.page);
+  await env.page.waitForFunction(() => window.PR.Blocks.levelsOf('capsule_1').length > 1);
+  const info = await env.page.evaluate(() => {
+    const levels = window.PR.Blocks.levelsOf('capsule_1');
+    const pal = document.querySelector('.palette-block .swatch img');
+    return { widths: levels.map((l) => l.w), first: levels[0].w, smallest: levels[levels.length - 1].w, pal: getComputedStyle(pal).imageRendering };
+  });
+  assert.equal(info.first, 887);
+  assert.ok(info.widths.length >= 4 && info.widths.every((w, i) => i === 0 || w < info.widths[i - 1]));
+  assert.ok(info.smallest < 64);
+  assert.notEqual(info.pal, 'pixelated', '크게 줄여 보여주는 그림에 pixelated를 쓰면 깨져 보인다');
 });
