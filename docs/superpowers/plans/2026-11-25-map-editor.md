@@ -14,7 +14,7 @@
 
 - 한 칸은 64×64 픽셀(`tileSize: 64`). 맵 기본 40×30칸, 최대 200×200칸.
 - 층은 `floor`(바닥), `objects`(물건) 두 개. 한 층에서 블록끼리는 겹치지 않는다.
-- 확대·축소는 10%~400%. 되돌리기는 최소 50단계(구현은 100단계).
+- 확대·축소는 4%~400%. 되돌리기는 최소 50단계(구현은 100단계).
 - 화면은 검은 배경. 픽셀 그림은 번지지 않게(`imageSmoothingEnabled = false`, CSS `image-rendering: pixelated`).
 - 화면 글자는 모두 한국어. 맵 삭제와 칸 줄이기로 내용이 잘리는 경우는 반드시 확인 창을 거친다.
 - 서버·설치 없이 file://로 열려야 한다. 따라서 `<script type="module">`, `fetch`, JSON 파일 직접 읽기는 쓰지 않는다. **스펙 7장의 `data/blocks.json`은 같은 이유로 `data/blocks.js`로 바꾼다**(Task 6에서 스펙도 고친다).
@@ -149,9 +149,9 @@
 - Create: `js/viewmath.js`, `tests/unit/viewmath.test.js`
 
 **Interfaces:**
-- Produces (`PR.ViewMath`): 상수 `MIN_SCALE=0.1`, `MAX_SCALE=4`, `TILE=64`. `View = {scale:number, x:number, y:number}` (`x,y`는 맵 왼쪽 위 모서리의 화면 위치(px), 한 칸의 화면 크기는 `64*scale`).
+- Produces (`PR.ViewMath`): 상수 `MIN_SCALE=0.04`, `MAX_SCALE=4`, `TILE=64`. `View = {scale:number, x:number, y:number}` (`x,y`는 맵 왼쪽 위 모서리의 화면 위치(px), 한 칸의 화면 크기는 `64*scale`).
   - `fitView(mapW, mapH, viewW, viewH, margin = 24) -> View` (맵 전체가 가운데에 들어옴, `MAX_SCALE` 초과 안 함)
-  - `zoomAt(view, factor, px, py) -> View` (화면의 (px,py) 아래 맵 지점이 그대로, 배율은 10%~400%로 제한)
+  - `zoomAt(view, factor, px, py) -> View` (화면의 (px,py) 아래 맵 지점이 그대로, 배율은 4%~400%로 제한)
   - `panBy(view, dx, dy) -> View`
   - `screenToCell(view, px, py) -> {x:number, y:number}` (내림, 맵 밖이면 음수/큰 값도 그대로)
   - `visibleCellRange(view, viewW, viewH, mapW, mapH) -> {x0,y0,x1,y1}` (포함 범위, 맵 범위로 제한, 완전히 밖이면 `x1<x0`)
@@ -256,7 +256,7 @@
   - (2,2)에서 (6,2)로 끌면 5개가 놓이고 `Ctrl+Z` 한 번에 5개 모두 사라짐.
   - `tmp_house`(3×2)를 맵 오른쪽 가장자리 칸(39,0)에 클릭하면 놓이지 않음, (37,0)에 클릭하면 놓임(Review Focus 4). 그 위에 `tmp_crate`를 (38,1)에 놓으면 구조물이 통째로 사라짐.
   - 층 전환: `[data-layer=objects]`일 때 팔레트에 바닥 블록이 안 보임; 지우개로 물건 층의 블록을 지워도 같은 칸의 바닥은 남음.
-  - 확대: `#btn-zoom-in`을 여러 번 눌러 `#zoom-label`이 "400%"에서 멈추고, `#btn-zoom-out` 반복으로 "10%"에서 멈춤. 휠로 확대해도 마우스 아래 칸이 변하지 않음. `#btn-fit` 후 전체가 다시 보임. 스페이스를 누른 채 끌면 `getView().x`가 바뀜.
+  - 확대: `#btn-zoom-in`을 여러 번 눌러 `#zoom-label`이 "400%"에서 멈추고, `#btn-zoom-out` 반복으로 "4%"에서 멈춤. 휠로 확대해도 마우스 아래 칸이 변하지 않음. `#btn-fit` 후 전체가 다시 보임. 스페이스를 누른 채 끌면 `getView().x`가 바뀜.
   - 자동 저장: 놓은 뒤 `#save-status`가 결국 "저장됨"이 되고, 새로고침 후에도 블록이 그대로.
   - 저장 실패(Review Focus 1): 페이지에서 `Storage.prototype.setItem`을 예외를 던지게 바꾼 뒤 블록을 놓으면 `#quota-banner`가 보이고 `#save-status`가 "저장 실패"이며 `getMap()`에는 블록이 남아 있음.
   - 없는 id: `editor.html?id=없음`이면 안내 문구가 보임. 존재하지 않는 블록 id를 가진 맵(저장 데이터에 직접 넣음)을 열어도 페이지 오류(`pageerror`) 없이 열림(Review Focus 5).
