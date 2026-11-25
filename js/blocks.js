@@ -14,6 +14,10 @@
     const b = get(id);
     return b ? { w: b.w, h: b.h } : null;
   }
+  function layerOf(id) {
+    const b = get(id);
+    return b ? b.layer : null;
+  }
   function byLayer(layer) {
     return defs().filter((b) => b.layer === layer);
   }
@@ -83,6 +87,6 @@
     }
   }
 
-  PR.Blocks = { all, get, sizeOf, byLayer, categories, image, imageFor, levelsOf, setImage, buildLevels, pickLevel, loadImages };
+  PR.Blocks = { all, get, sizeOf, layerOf, byLayer, categories, image, imageFor, levelsOf, setImage, buildLevels, pickLevel, loadImages };
   if (typeof module !== 'undefined') module.exports = PR.Blocks;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

@@ -71,7 +71,7 @@
     const g = canvas.getContext('2d');
     const image = g.createImageData(map.width, map.height); // 처음엔 전부 투명(=배경 검정)
     const data = image.data;
-    for (const layer of ['floor', 'objects']) {
+    for (const layer of ['floor', 'walls', 'objects']) {
       for (const p of map.layers[layer]) {
         const [r, gr, b] = rgbOf(p.b);
         for (let yy = p.y; yy < p.y + p.h; yy++) {
@@ -109,7 +109,7 @@
         ctx.drawImage(rasterOf(map), 0, 0, map.width, map.height, view.x, view.y, map.width * cellPx, map.height * cellPx);
         drawn = MM.countPlacements(map);
       } else {
-        for (const layer of ['floor', 'objects']) {
+        for (const layer of ['floor', 'walls', 'objects']) {
           for (const p of MM.placementsInRect(map, layer, r.x0, r.y0, r.x1, r.y1)) {
             drawPlacement(ctx, p, view, cellPx, 1);
             drawn++;
@@ -177,8 +177,8 @@
     ctx.fillStyle = '#000';
     ctx.fillRect(Math.round(ox), Math.round(oy), Math.round(data.width * s), Math.round(data.height * s));
     const B = root.PR.Blocks;
-    for (const layer of ['floor', 'objects']) {
-      for (const [b, x, y, n] of data[layer]) {
+    for (const layer of ['floor', 'walls', 'objects']) {
+      for (const [b, x, y, n] of data[layer] || []) {
         const size = B.sizeOf(b) || { w: 1, h: 1 };
         const def = B.get(b);
         const x0 = Math.floor(ox + x * s), x1 = Math.ceil(ox + (x + n * size.w) * s);

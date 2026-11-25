@@ -226,3 +226,24 @@ test('맵을 1000×1000 크기로 저장하고 다시 읽을 수 있다', () => 
   const meta = store.listMeta()[0];
   assert.deepEqual([meta.width, meta.height], [1000, 1000]);
 });
+
+test('벽 층이 없던 예전 저장 데이터도 loadSerialized로 읽힌다', () => {
+  const be = memBackend();
+  const store = S.createStore(be);
+  const m = completeMap(store, '예전 맵');
+  const data = JSON.parse(be.getItem('pr.map.' + m.id));
+  delete data.walls;
+  be.setItem('pr.map.' + m.id, JSON.stringify(data));
+  assert.equal(store.loadSerialized(m.id).version, 1);
+  assert.equal(store.loadMap(m.id).layers.walls.length, 0);
+});
+
+test('저장 데이터에 벽 층이 들어간다', () => {
+  const be = memBackend();
+  const store = S.createStore(be);
+  const m = store.createMap({ name: '벽 있는 맵', width: 10, height: 10 });
+  M.placeBlock(m, 'walls', { id: 'wall', w: 1, h: 1 }, 1, 1);
+  store.saveMap(m);
+  assert.deepEqual(store.loadSerialized(m.id).walls, [['wall', 1, 1, 1]]);
+  assert.equal(M.placementAt(store.loadMap(m.id), 'walls', 1, 1).b, 'wall');
+});

@@ -154,3 +154,44 @@ test('썸네일은 저장된 데이터에서 줄(런) 단위로만 그려서 아
   assert.ok(Date.now() - t0 < 500);
   assert.ok(calls.fillRect >= 1000 && calls.fillRect < 1100, `fillRect ${calls.fillRect}번`);
 });
+
+test('그리는 순서는 바닥 → 벽 → 물건이라서 물건이 벽 앞에 보인다', () => {
+  const m = M.createMap({ id: 'o', name: 'o', width: 10, height: 10 });
+  M.placeBlock(m, 'objects', { id: 'o_img', w: 1, h: 1 }, 3, 3);
+  M.placeBlock(m, 'walls', { id: 'w_img', w: 1, h: 1 }, 3, 3);
+  M.placeBlock(m, 'floor', { id: 'f_img', w: 1, h: 1 }, 3, 3);
+  const imgs = {};
+  for (const id of ['f_img', 'w_img', 'o_img']) {
+    imgs[id] = { width: 64, height: 64, tag: id };
+    B.setImage(id, imgs[id]);
+  }
+  const saved = globalThis.PR.BLOCK_DEFS;
+  const def = (id, layer) => ({ id, name: id, layer, category: 'x', w: 1, h: 1, solid: false, color: '#123456' });
+  globalThis.PR.BLOCK_DEFS = [def('f_img', 'floor'), def('w_img', 'walls'), def('o_img', 'objects')];
+  try {
+    const { ctx, drawn } = imageCtx();
+    R.drawMap(ctx, m, { scale: 1, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
+    assert.deepEqual(drawn.map((d) => d.img.tag), ['f_img', 'w_img', 'o_img']);
+  } finally {
+    globalThis.PR.BLOCK_DEFS = saved;
+  }
+});
+
+test('벽 층도 한 장 그림(작게 볼 때)과 썸네일에 포함된다', () => withFakeDocument((made) => {
+  const saved = globalThis.PR.BLOCK_DEFS;
+  globalThis.PR.BLOCK_DEFS = [{ id: 'w_col', name: 'w', layer: 'walls', category: 'x', w: 1, h: 1, solid: true, color: '#ff0000' }];
+  try {
+    const m = M.createMap({ id: 'w', name: 'w', width: 100, height: 100 });
+    M.placeBlock(m, 'walls', { id: 'w_col', w: 1, h: 1 }, 0, 0);
+    const { ctx } = countingCtx();
+    R.drawMap(ctx, m, { scale: 0.02, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
+    const px = made[0].image.data;
+    assert.deepEqual([px[0], px[1], px[2], px[3]], [255, 0, 0, 255]);
+    const data = { version: 1, width: 100, height: 100, floor: [], walls: [['w_col', 0, 0, 5]], objects: [] };
+    const c = countingCtx();
+    R.drawThumbnailData({ width: 240, height: 160, getContext: () => c.ctx }, data);
+    assert.ok(c.calls.fillRect >= 3, '벽도 그린다 (배경 2번 + 벽 1번 이상)');
+  } finally {
+    globalThis.PR.BLOCK_DEFS = saved;
+  }
+}));

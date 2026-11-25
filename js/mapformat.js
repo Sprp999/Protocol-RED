@@ -32,6 +32,7 @@
       height: map.height,
       tileSize: map.tileSize,
       floor: serializeLayer(map.layers.floor),
+      walls: serializeLayer(map.layers.walls),
       objects: serializeLayer(map.layers.objects),
       start: map.start ? { x: map.start.x, y: map.start.y } : null,
       exits: map.exits.map((e) => ({ x: e.x, y: e.y })),
@@ -47,7 +48,8 @@
     return { x: pt.x, y: pt.y };
   }
 
-  function parseMap(data, sizeOf) {
+  // layerOf(블록id) 를 주면, 예전에 다른 층에 저장된 블록도 그 블록이 속한 층으로 옮겨서 읽는다
+  function parseMap(data, sizeOf, layerOf) {
     const MM = root.PR.MapModel;
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
       throw new MapFormatError('맵 파일 형식이 아니에요.');
@@ -64,8 +66,9 @@
     } catch (e) {
       throw new MapFormatError('맵 크기가 올바르지 않아요. (1~' + MM.MAX_SIZE + ' 사이의 정수)');
     }
-    for (const [layer, label] of [['floor', '바닥'], ['objects', '물건']]) {
-      const list = data[layer];
+    for (const [layer, label] of [['floor', '바닥'], ['walls', '벽'], ['objects', '물건']]) {
+      // 벽 층은 나중에 생겼으므로, 예전 파일에는 없어도 된다
+      const list = layer === 'walls' && data.walls === undefined ? [] : data[layer];
       if (!Array.isArray(list)) throw new MapFormatError(label + ' 층 정보가 없어요.');
       for (const entry of list) {
         if (!Array.isArray(entry) || entry.length !== 4 || typeof entry[0] !== 'string' ||
@@ -78,7 +81,8 @@
         if (x + n * size.w > map.width || y + size.h > map.height) {
           throw new MapFormatError(label + ' 층에 맵 밖으로 나가는 항목이 있어요.');
         }
-        for (let i = 0; i < n; i++) MM.placeBlock(map, layer, { id: b, w: size.w, h: size.h }, x + i * size.w, y);
+        const target = (layerOf && layerOf(b)) || layer;
+        for (let i = 0; i < n; i++) MM.placeBlock(map, target, { id: b, w: size.w, h: size.h }, x + i * size.w, y);
       }
     }
     if (data.start !== null && data.start !== undefined) {

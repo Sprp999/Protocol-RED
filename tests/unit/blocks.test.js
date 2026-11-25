@@ -24,7 +24,7 @@ test('진짜 블록 목록: id는 유일하고 모든 항목이 올바른 크기
   for (const b of real) {
     assert.ok(Number.isInteger(b.w) && b.w >= 1, b.id);
     assert.ok(Number.isInteger(b.h) && b.h >= 1, b.id);
-    assert.ok(['floor', 'objects'].includes(b.layer), b.id);
+    assert.ok(['floor', 'walls', 'objects'].includes(b.layer), b.id);
     assert.match(b.color, /^#[0-9a-fA-F]{6}$/, b.id);
     assert.equal(typeof b.solid, 'boolean', b.id);
     assert.ok(b.name && b.category, b.id);
@@ -119,3 +119,19 @@ test('패널 벽은 그림이 칸에 꽉 차서 옆으로 이어 놓아도 틈�
   assert.ok(opaqueShare(rows(0)) > 0.95, '위쪽 가장자리에 투명한 틈이 있어요');
   assert.ok(opaqueShare(rows(png.height - 1)) > 0.95, '아래쪽 가장자리에 투명한 틈이 있어요');
 });
+
+test('금속 패널 벽은 벽 층에, 배양 캡슐은 물건 층에 있어서 서로 겹쳐 놓을 수 있다', () => {
+  assert.equal(real.find((b) => b.id === 'panel_1').layer, 'walls');
+  assert.equal(real.find((b) => b.id === 'capsule_1').layer, 'objects');
+  assert.equal(B.layerOf('panel_1'), 'walls');
+  assert.equal(B.layerOf('없는것'), null);
+});
+
+test('byLayer는 벽 층도 따로 나눈다', () => withFixture(() => {
+  const saved = globalThis.PR.BLOCK_DEFS;
+  globalThis.PR.BLOCK_DEFS = FIXTURE.concat([{ id: 'w1', name: '벽돌', layer: 'walls', category: '벽', w: 1, h: 1, solid: true, color: '#555555' }]);
+  assert.deepEqual(B.byLayer('walls').map((b) => b.id), ['w1']);
+  assert.deepEqual(B.categories('walls'), ['벽']);
+  assert.equal(B.layerOf('w1'), 'walls');
+  globalThis.PR.BLOCK_DEFS = saved;
+}));

@@ -49,7 +49,7 @@ test('200×200 맵 전체 보기와 100% 화면 모두 한 번 그리는 데 50m
   await openBigMap(env.page);
   const total = await env.page.evaluate(() => {
     const m = window.__editor.getMap();
-    return m.layers.floor.length + m.layers.objects.length;
+    return m.layers.floor.length + m.layers.walls.length + m.layers.objects.length;
   });
   assert.equal(total, 40000 + 8000);
   const fit = await timeDraws(env.page);

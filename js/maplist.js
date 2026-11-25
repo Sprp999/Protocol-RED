@@ -17,7 +17,7 @@
     }
   }
 
-  const store = PR.Store.createStore(pickBackend(), PR.Blocks.sizeOf);
+  const store = PR.Store.createStore(pickBackend(), PR.Blocks.sizeOf, PR.Blocks.layerOf);
   window.__store = store;
 
   const grid = document.getElementById('map-grid');

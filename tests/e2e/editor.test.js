@@ -291,10 +291,69 @@ test('금속 패널 벽(가로 1칸 × 세로 3칸)은 세 칸을 차지하고 �
   assert.equal(await count(env.page), 0, '아래 두 칸이 맵 밖이라 놓이지 않는다');
   await clickCell(env.page, 5, 27);
   assert.equal(await count(env.page), 1);
-  const p = await env.page.evaluate(() => window.__editor.getMap().layers.objects[0]);
+  const p = await env.page.evaluate(() => window.__editor.getMap().layers.walls[0]);
   assert.deepEqual([p.b, p.x, p.y, p.w, p.h], ['panel_1', 5, 27, 1, 3]);
   await env.page.click('[data-tool=erase]');
   await clickCell(env.page, 5, 29);
   assert.equal(await count(env.page), 0, '아래 칸을 눌러도 전체가 지워진다');
   assert.deepEqual(env.errors, []);
+});
+
+test('벽 앞에 물건을 놓으면 벽이 지워지지 않고 겹쳐 보인다', async () => {
+  await openEditor(env.page);
+  const layers = await env.page.locator('[data-layer]').evaluateAll((els) => els.map((e) => e.dataset.layer));
+  assert.deepEqual(layers, ['floor', 'walls', 'objects']);
+  await pick(env.page, 'panel_1');
+  await clickCell(env.page, 5, 5);
+  assert.equal(await count(env.page), 1);
+  await pick(env.page, 'capsule_1');
+  await clickCell(env.page, 5, 6);
+  assert.equal(await count(env.page), 2, '벽이 지워지지 않는다');
+  const both = await env.page.evaluate(() => {
+    const m = window.__editor.getMap();
+    return { wall: m.layers.walls.map((p) => p.b), obj: m.layers.objects.map((p) => p.b) };
+  });
+  assert.deepEqual(both, { wall: ['panel_1'], obj: ['capsule_1'] });
+  // 물건 층 지우개는 물건만, 벽 층 지우개는 벽만 지운다
+  await env.page.click('[data-tool=erase]');
+  await clickCell(env.page, 5, 6);
+  assert.equal(await count(env.page), 1);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walls.length), 1);
+  await env.page.keyboard.press('Control+z');
+  assert.equal(await count(env.page), 2);
+  await env.page.click('[data-layer=walls]');
+  await clickCell(env.page, 5, 6);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walls.length), 0);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.objects.length), 1);
+  assert.deepEqual(env.errors, []);
+});
+
+test('벽 층에는 벽 블록만, 물건 층에는 물건 블록만 보인다', async () => {
+  await openEditor(env.page);
+  await env.page.click('[data-layer=walls]');
+  const ids = () => env.page.locator('.palette-block').evaluateAll((els) => els.map((e) => e.dataset.blockId));
+  const walls = await ids();
+  assert.ok(walls.includes('panel_1'));
+  assert.ok(!walls.includes('capsule_1'));
+  await env.page.click('[data-layer=objects]');
+  assert.ok(!(await ids()).includes('panel_1'));
+});
+
+test('예전에 물건 층에 저장된 벽 블록이 있는 맵도 열리고 벽 층으로 옮겨진다', async () => {
+  await env.page.goto(pageUrl('index.html'));
+  const id = await env.page.evaluate(() => {
+    const m = window.__store.createMap({ name: '옛 맵', width: 10, height: 10 });
+    const data = window.PR.MapFormat.serializeMap(m);
+    delete data.walls;
+    data.objects = [['panel_1', 2, 2, 1]];
+    localStorage.setItem('pr.map.' + m.id, JSON.stringify(data));
+    return m.id;
+  });
+  await env.page.goto(pageUrl('editor.html') + '?id=' + id);
+  await env.page.waitForFunction(() => window.__editor && window.__editor.getMap());
+  const layers = await env.page.evaluate(() => {
+    const m = window.__editor.getMap();
+    return { walls: m.layers.walls.length, objects: m.layers.objects.length };
+  });
+  assert.deepEqual(layers, { walls: 1, objects: 0 });
 });

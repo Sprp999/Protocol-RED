@@ -5,6 +5,7 @@ const M = require('../../js/mapmodel.js');
 const blk = (id, w = 1, h = 1) => ({ id, w, h });
 const snap = (map) => JSON.stringify({
   floor: [...map.layers.floor].sort((a, b) => a.uid - b.uid),
+  walls: [...map.layers.walls].sort((a, b) => a.uid - b.uid),
   objects: [...map.layers.objects].sort((a, b) => a.uid - b.uid),
   start: map.start,
   exits: map.exits,
@@ -17,7 +18,7 @@ test('createMap은 두 층이 비어 있고 한 칸이 64인 맵을 만든다', 
   assert.equal(m.height, 30);
   assert.equal(m.tileSize, 64);
   assert.equal(m.version, 1);
-  assert.deepEqual(m.layers, { floor: [], objects: [] });
+  assert.deepEqual(m.layers, { floor: [], walls: [], objects: [] });
   assert.equal(m.start, null);
   assert.deepEqual(m.exits, []);
 });
@@ -254,4 +255,42 @@ test('replaceWith는 같은 맵 객체를 새 크기의 내용으로 바꾼다',
   assert.ok(M.revision(m) > r0);
   assert.ok(M.placeBlock(m, 'floor', blk('g'), 19, 19), '새 크기에서 색인이 맞게 동작한다');
   assert.equal(M.placeBlock(m, 'floor', blk('g'), 20, 20), null);
+});
+
+test('벽 층과 물건 층은 서로 독립이라 같은 칸에 겹쳐 놓아도 지워지지 않는다', () => {
+  const m = newMap();
+  M.placeBlock(m, 'walls', blk('panel', 1, 3), 3, 3);
+  const p = M.placeBlock(m, 'objects', blk('capsule', 1, 2), 3, 4);
+  assert.equal(p.ops[0].removed.length, 0, '벽을 지우지 않는다');
+  assert.equal(M.placementAt(m, 'walls', 3, 4).b, 'panel');
+  assert.equal(M.placementAt(m, 'objects', 3, 4).b, 'capsule');
+  assert.equal(M.countPlacements(m), 2);
+  assert.equal(M.placementAt(m, 'floor', 3, 4), null);
+});
+
+test('벽 층 안에서는 같은 층 블록끼리만 서로 대체한다', () => {
+  const m = newMap();
+  M.placeBlock(m, 'walls', blk('panel', 1, 3), 3, 3);
+  M.placeBlock(m, 'objects', blk('crate'), 3, 3);
+  const p = M.placeBlock(m, 'walls', blk('wall'), 3, 4);
+  assert.equal(p.ops[0].removed.length, 1);
+  assert.equal(M.placementAt(m, 'walls', 3, 3), null);
+  assert.equal(M.placementAt(m, 'walls', 3, 4).b, 'wall');
+  assert.equal(M.placementAt(m, 'objects', 3, 3).b, 'crate');
+});
+
+test('벽 층의 지우기·되돌리기·크기 변경이 다른 층과 똑같이 동작한다', () => {
+  const m = newMap();
+  const before = snap(m);
+  const p1 = M.placeBlock(m, 'walls', blk('panel', 1, 3), 39, 27);
+  const p2 = M.eraseAt(m, 'walls', 39, 29);
+  assert.equal(M.countPlacements(m), 0);
+  M.revertPatch(m, p2);
+  assert.equal(M.countPlacements(m), 1);
+  assert.equal(M.countDroppedByResize(m, 20, 20), 1);
+  assert.equal(M.countPlacements(M.resizeMap(m, 20, 20)), 0);
+  assert.equal(M.countPlacements(M.resizeMap(m, 60, 40)), 1);
+  M.revertPatch(m, p1);
+  assert.equal(snap(m), before);
+  assert.deepEqual(M.LAYERS, ['floor', 'walls', 'objects']);
 });

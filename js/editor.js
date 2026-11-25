@@ -20,7 +20,7 @@
     }
   }
 
-  const store = PR.Store.createStore(pickBackend(), PR.Blocks.sizeOf);
+  const store = PR.Store.createStore(pickBackend(), PR.Blocks.sizeOf, PR.Blocks.layerOf);
   const params = new URLSearchParams(location.search);
   const map = params.get('id') ? store.loadMap(params.get('id')) : null;
   if (!map) {

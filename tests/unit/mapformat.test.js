@@ -3,12 +3,12 @@ const assert = require('node:assert/strict');
 const M = require('../../js/mapmodel.js');
 const F = require('../../js/mapformat.js');
 
-const sizes = { grass: { w: 1, h: 1 }, wall: { w: 1, h: 1 }, house: { w: 3, h: 2 } };
+const sizes = { grass: { w: 1, h: 1 }, wall: { w: 1, h: 1 }, house: { w: 3, h: 2 }, panel: { w: 1, h: 3 } };
 const sizeOf = (id) => sizes[id] || null;
 const blk = (id) => ({ id, ...sizes[id] });
 const cells = (map) => {
   const out = [];
-  for (const layer of ['floor', 'objects']) {
+  for (const layer of ['floor', 'walls', 'objects']) {
     for (const p of map.layers[layer]) out.push(`${layer}:${p.b}@${p.x},${p.y}`);
   }
   return out.sort();
@@ -20,6 +20,8 @@ function sampleMap() {
   M.placeBlock(m, 'objects', blk('wall'), 5, 5);
   M.placeBlock(m, 'objects', blk('wall'), 6, 5);
   M.placeBlock(m, 'objects', blk('house'), 10, 10);
+  M.placeBlock(m, 'walls', blk('panel'), 20, 5);
+  M.placeBlock(m, 'objects', blk('house'), 20, 6);
   M.toggleStart(m, 2, 2);
   M.toggleExit(m, 38, 28);
   M.toggleExit(m, 1, 28);
@@ -98,4 +100,37 @@ test('파일 안에서 겹치는 항목은 뒤에 온 것이 이긴다', () => {
   const back = F.parseMap(data, sizeOf);
   assert.equal(M.placementAt(back, 'objects', 10, 10), null);
   assert.equal(M.placementAt(back, 'objects', 11, 10).b, 'wall');
+});
+
+test('벽 층도 저장했다가 그대로 읽히고, 벽과 물건이 겹쳐 있어도 둘 다 남는다', () => {
+  const m = sampleMap();
+  const data = JSON.parse(JSON.stringify(F.serializeMap(m)));
+  assert.deepEqual(data.walls, [['panel', 20, 5, 1]]);
+  const back = F.parseMap(data, sizeOf);
+  assert.equal(M.placementAt(back, 'walls', 20, 7).b, 'panel');
+  assert.equal(M.placementAt(back, 'objects', 21, 7).b, 'house');
+  assert.deepEqual(cells(back), cells(m));
+});
+
+test('벽 층이 없던 예전 파일도 읽힌다', () => {
+  const data = JSON.parse(JSON.stringify(F.serializeMap(sampleMap())));
+  delete data.walls;
+  const back = F.parseMap(data, sizeOf);
+  assert.equal(back.layers.walls.length, 0);
+});
+
+test('벽 층 정보가 배열이 아니면 거부된다', () => {
+  const data = { ...F.serializeMap(sampleMap()), walls: 'x' };
+  assert.throws(() => F.parseMap(data, sizeOf), F.MapFormatError);
+});
+
+test('예전에 물건 층에 저장된 벽 블록은 읽을 때 벽 층으로 옮겨진다', () => {
+  const data = JSON.parse(JSON.stringify(F.serializeMap(sampleMap())));
+  delete data.walls;
+  data.objects = [['panel', 5, 5, 1], ['house', 10, 10, 1]];
+  const layerOf = (id) => (id === 'panel' ? 'walls' : id === 'house' ? 'objects' : null);
+  const back = F.parseMap(data, sizeOf, layerOf);
+  assert.equal(M.placementAt(back, 'walls', 5, 6).b, 'panel');
+  assert.equal(M.placementAt(back, 'objects', 5, 5), null);
+  assert.equal(M.placementAt(back, 'objects', 10, 10).b, 'house');
 });

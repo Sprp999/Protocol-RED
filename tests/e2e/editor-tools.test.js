@@ -13,7 +13,7 @@ test.afterEach(async () => {
 
 const mapInfo = (page) => page.evaluate(() => {
   const m = window.__editor.getMap();
-  return { w: m.width, h: m.height, start: m.start, exits: m.exits, n: m.layers.floor.length + m.layers.objects.length };
+  return { w: m.width, h: m.height, start: m.start, exits: m.exits, n: m.layers.floor.length + m.layers.walls.length + m.layers.objects.length };
 });
 
 test('사각형 도구는 영역을 한 번에 채우고 되돌리기 한 번에 취소된다', async () => {

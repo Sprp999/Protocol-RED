@@ -17,7 +17,7 @@
     };
   }
 
-  function createStore(backend, sizeOf = () => null) {
+  function createStore(backend, sizeOf = () => null, layerOf = () => null) {
     const MM = () => root.PR.MapModel;
     const MF = () => root.PR.MapFormat;
     const key = (id) => MAP_PREFIX + id;
@@ -37,7 +37,7 @@
       try {
         const raw = backend.getItem(key(id));
         if (raw === null || raw === undefined) return null;
-        return MF().parseMap(JSON.parse(raw), sizeOf);
+        return MF().parseMap(JSON.parse(raw), sizeOf, layerOf);
       } catch (e) {
         return null;
       }
@@ -137,7 +137,7 @@
       const data = MF().serializeMap(src);
       data.id = newId();
       data.name = src.name + ' 복사';
-      const copy = MF().parseMap(data, sizeOf);
+      const copy = MF().parseMap(data, sizeOf, layerOf);
       const order = readOrder();
       try {
         writeMap(copy);
@@ -189,7 +189,7 @@
       const parsed = [];
       for (let i = 0; i < file.maps.length; i++) {
         try {
-          parsed.push(MF().parseMap(file.maps[i], sizeOf));
+          parsed.push(MF().parseMap(file.maps[i], sizeOf, layerOf));
         } catch (e) {
           return { ok: false, message: (i + 1) + '번째 맵을 읽을 수 없어요: ' + e.message };
         }

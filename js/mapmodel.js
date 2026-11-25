@@ -1,7 +1,7 @@
 (function (root) {
   const PR = (root.PR = root.PR || {});
 
-  const LAYERS = ['floor', 'objects'];
+  const LAYERS = ['floor', 'walls', 'objects']; // 아래에서 위 순서로 그려진다: 바닥 → 벽 → 물건
   const MAX_SIZE = 1000;
 
   function checkSize(width, height) {
@@ -68,7 +68,7 @@
       width,
       height,
       tileSize: 64,
-      layers: { floor: [], objects: [] },
+      layers: { floor: [], walls: [], objects: [] },
       start: null,
       exits: [],
       nextUid: 1,
@@ -110,7 +110,7 @@
   }
 
   function countPlacements(map) {
-    return map.layers.floor.length + map.layers.objects.length;
+    return LAYERS.reduce((n, layer) => n + map.layers[layer].length, 0);
   }
 
   // 사각형 안에 걸친 배치들의 uid(중복 없이)
