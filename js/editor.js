@@ -96,7 +96,7 @@
     }
     requestDraw();
   }
-  new ResizeObserver(resizeCanvas).observe($('stage'));
+  new ResizeObserver(resizeCanvas).observe(canvas);
 
   // ---------- 저장 ----------
   let saveTimer = 0;

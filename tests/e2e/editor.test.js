@@ -17,11 +17,20 @@ test('열면 캔버스가 보이고 맵 전체가 화면 안에 들어온다', a
     const c = document.getElementById('map-canvas');
     const v = window.__editor.getView();
     const w = c.getBoundingClientRect().width;
-    return { cw: c.width, ch: c.height, label: document.getElementById('zoom-label').textContent, left: v.x, right: v.x + 40 * 64 * v.scale, w };
+    const rect = c.getBoundingClientRect();
+    const bar = document.querySelector('.zoombar').getBoundingClientRect();
+    return {
+      cw: c.width, ch: c.height, label: document.getElementById('zoom-label').textContent,
+      left: v.x, right: v.x + 40 * 64 * v.scale, w,
+      top: v.y, bottom: v.y + 30 * 64 * v.scale, h: rect.height,
+      barOverlapsCanvas: bar.top < rect.bottom - 1 && bar.bottom > rect.top && bar.left < rect.right && bar.right > rect.left,
+    };
   });
   assert.ok(info.cw > 0 && info.ch > 0);
   assert.match(info.label, /^\d+%$/);
   assert.ok(info.left >= 0 && info.right <= info.w);
+  assert.ok(info.top >= 0 && info.bottom <= info.h, '맵 아래쪽도 화면 안에 들어온다');
+  assert.equal(info.barOverlapsCanvas, false, '확대 막대가 맵 위를 가리지 않는다');
   assert.deepEqual(env.errors, []);
 });
 
