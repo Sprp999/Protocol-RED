@@ -18,11 +18,13 @@ test('열면 캔버스가 보이고 맵 전체가 화면 안에 들어온다', a
     const v = window.__editor.getView();
     const w = c.getBoundingClientRect().width;
     const rect = c.getBoundingClientRect();
+    const side = document.querySelector('.sidebar');
     const bar = document.querySelector('.zoombar').getBoundingClientRect();
     return {
       cw: c.width, ch: c.height, label: document.getElementById('zoom-label').textContent,
       left: v.x, right: v.x + 40 * 64 * v.scale, w,
       top: v.y, bottom: v.y + 30 * 64 * v.scale, h: rect.height,
+      sideOverflow: side.scrollWidth > side.clientWidth,
       barOverlapsCanvas: bar.top < rect.bottom - 1 && bar.bottom > rect.top && bar.left < rect.right && bar.right > rect.left,
     };
   });
@@ -31,6 +33,7 @@ test('열면 캔버스가 보이고 맵 전체가 화면 안에 들어온다', a
   assert.ok(info.left >= 0 && info.right <= info.w);
   assert.ok(info.top >= 0 && info.bottom <= info.h, '맵 아래쪽도 화면 안에 들어온다');
   assert.equal(info.barOverlapsCanvas, false, '확대 막대가 맵 위를 가리지 않는다');
+  assert.equal(info.sideOverflow, false, '왼쪽 블록 목록이 옆으로 삐져나가지 않는다');
   assert.deepEqual(env.errors, []);
 });
 

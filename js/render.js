@@ -55,7 +55,9 @@
     const { viewW, viewH, showGrid, ghost, rect } = opts;
     const VM = root.PR.ViewMath;
     const cellPx = TILE * view.scale;
-    ctx.imageSmoothingEnabled = false;
+    // 확대할 때는 픽셀이 번지지 않게, 작게 줄일 때는 점무늬가 생기지 않게 부드럽게 그린다
+    ctx.imageSmoothingEnabled = cellPx < 24;
+    ctx.imageSmoothingQuality = 'high';
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, viewW, viewH);
     const mx = Math.round(view.x), my = Math.round(view.y);
