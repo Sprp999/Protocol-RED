@@ -40,3 +40,32 @@ a { color: var(--accent-2); }
 .modal .row { display: flex; gap: 10px; }
 .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .modal .error { color: #ff8a8a; min-height: 18px; margin-top: 8px; }
+
+/* ---- 맵 목록 페이지 ---- */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.topbar h1 { margin: 0; font-size: 18px; }
+.top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.file-btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 7px 12px; cursor: pointer; }
+.file-btn:hover { border-color: var(--accent-2); }
+.hint { color: var(--muted); margin: 12px 16px 0; }
+.empty { color: var(--muted); text-align: center; margin: 60px 16px; }
+#map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 16px; }
+.map-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px; }
+.map-card.drag-over { border-color: var(--accent-2); }
+.map-card.dragging { opacity: 0.4; }
+.map-card canvas { width: 100%; aspect-ratio: 3 / 2; background: #000; border-radius: 6px; image-rendering: pixelated; }
+.card-head { display: flex; align-items: center; gap: 8px; }
+.card-index { background: var(--accent); color: #fff; border-radius: 6px; min-width: 26px; padding: 2px 6px;
+  text-align: center; font-weight: bold; }
+.card-name { color: var(--text); text-decoration: none; font-weight: bold; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.card-meta { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.card-actions button, .card-actions a { padding: 5px 9px; font-size: 13px; }
+a.btn-open { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--text); text-decoration: none; }
+a.btn-open:hover { border-color: var(--accent-2); }
+.banner.ok { background: #12301c; border-color: var(--ok); color: #aef0c3; }
