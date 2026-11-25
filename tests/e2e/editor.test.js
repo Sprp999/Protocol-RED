@@ -196,3 +196,21 @@ test('그림이 있는 블록은 팔레트와 맵에 그림으로 보인다', as
   assert.equal(await count(env.page), 1);
   assert.deepEqual(env.errors, []);
 });
+
+test('마우스 오른쪽 버튼을 누르고 끌면 블록은 놓이지 않고 화면만 이동한다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'tmp_floor_gray');
+  const before = await env.page.evaluate(() => ({ x: window.__editor.getView().x, y: window.__editor.getView().y }));
+  await env.page.mouse.move(500, 300);
+  await env.page.mouse.down({ button: 'right' });
+  await env.page.mouse.move(580, 350, { steps: 6 });
+  await env.page.mouse.up({ button: 'right' });
+  const after = await env.page.evaluate(() => ({ x: window.__editor.getView().x, y: window.__editor.getView().y }));
+  assert.ok(Math.abs(after.x - before.x - 80) < 2, `x가 약 80 이동해야 함 (${before.x} → ${after.x})`);
+  assert.ok(Math.abs(after.y - before.y - 50) < 2, `y가 약 50 이동해야 함 (${before.y} → ${after.y})`);
+  assert.equal(await count(env.page), 0, '오른쪽 버튼으로는 블록이 놓이지 않는다');
+  assert.equal(await env.page.locator('#btn-undo').isDisabled(), true, '되돌리기 기록도 생기지 않는다');
+  // 이동 뒤에는 왼쪽 버튼으로 정상적으로 놓인다
+  await clickCell(env.page, 3, 3);
+  assert.equal(await count(env.page), 1);
+});

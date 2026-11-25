@@ -303,7 +303,7 @@
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);
     const p = localPoint(e);
-    if (state.space || e.button === 1) {
+    if (state.space || e.button === 1 || e.button === 2) {
       state.panning = { x: p.x, y: p.y };
       canvas.classList.add('panning');
       e.preventDefault();
