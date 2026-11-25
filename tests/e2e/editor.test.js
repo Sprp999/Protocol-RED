@@ -175,3 +175,21 @@ test('없는 맵 번호는 안내가 보이고, 목록에 없는 블록이 있�
   assert.equal(await count(env.page), 1);
   assert.deepEqual(env.errors, []);
 });
+
+test('그림이 있는 블록은 팔레트와 맵에 그림으로 보인다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'floor_light_1');
+  const sw = await env.page.evaluate(() => {
+    const img = document.querySelector('.palette-block[data-block-id="floor_light_1"] img');
+    return img ? { w: img.naturalWidth, h: img.naturalHeight } : null;
+  });
+  assert.deepEqual(sw, { w: 64, h: 64 });
+  await clickCell(env.page, 3, 3);
+  const loaded = await env.page.evaluate(() => {
+    const img = window.PR.Blocks.image('floor_light_1');
+    return img ? img.naturalWidth : 0;
+  });
+  assert.equal(loaded, 64);
+  assert.equal(await count(env.page), 1);
+  assert.deepEqual(env.errors, []);
+});

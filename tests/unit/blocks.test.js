@@ -35,3 +35,18 @@ test('byLayer와 categories는 층별로 나뉜다', () => {
   assert.ok(B.categories('objects').length >= 1);
   assert.equal(new Set(B.categories('floor')).size, B.categories('floor').length);
 });
+
+test('그림 파일이 있는 블록은 파일이 실제로 있고 크기가 칸 수에 맞는 PNG다', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const withFile = B.all().filter((b) => b.file);
+  assert.ok(withFile.length >= 1);
+  for (const b of withFile) {
+    const full = path.join(__dirname, '..', '..', b.file);
+    assert.ok(fs.existsSync(full), `${b.id}: ${b.file} 파일이 없어요`);
+    const buf = fs.readFileSync(full);
+    assert.equal(buf.toString('latin1', 1, 4), 'PNG', `${b.id}: PNG 파일이 아니에요`);
+    assert.equal(buf.readUInt32BE(16), b.w * 64, `${b.id}: 가로 크기`);
+    assert.equal(buf.readUInt32BE(20), b.h * 64, `${b.id}: 세로 크기`);
+  }
+});

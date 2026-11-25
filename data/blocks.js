@@ -3,6 +3,7 @@
 (function (root) {
   const PR = (root.PR = root.PR || {});
   PR.BLOCK_DEFS = [
+    { id: "floor_light_1", name: "연회색 바닥", layer: "floor", category: "바닥", w: 1, h: 1, solid: false, color: "#e5e8ee", file: "assets/blocks/floor_light_1.png" },
     { id: 'tmp_floor_gray', name: '회색 바닥(임시)', layer: 'floor', category: '바닥', w: 1, h: 1, solid: false, color: '#4a4a4a' },
     { id: 'tmp_floor_dirt', name: '흙 바닥(임시)', layer: 'floor', category: '바닥', w: 1, h: 1, solid: false, color: '#6b4a2b' },
     { id: 'tmp_wall', name: '벽(임시)', layer: 'objects', category: '벽', w: 1, h: 1, solid: true, color: '#8a8a99' },
