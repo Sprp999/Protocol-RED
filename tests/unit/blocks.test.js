@@ -104,3 +104,18 @@ test('setImage로 등록한 그림은 image가 원본을, imageFor가 크기에 
   assert.equal(B.imageFor('없는그림', 64), null);
   assert.equal(B.image('없는그림'), null);
 });
+
+test('패널 벽은 그림이 칸에 꽉 차서 옆으로 이어 놓아도 틈이 없다', () => {
+  const { PNG } = require('pngjs');
+  const b = real.find((x) => x.id === 'panel_1');
+  assert.ok(b, 'panel_1 블록이 없어요');
+  const png = PNG.sync.read(fs.readFileSync(path.join(__dirname, '..', '..', b.file)));
+  const alphaAt = (x, y) => png.data[(y * png.width + x) * 4 + 3];
+  const opaqueShare = (points) => points.filter(([x, y]) => alphaAt(x, y) >= 240).length / points.length;
+  const cols = (x) => Array.from({ length: png.height }, (_, y) => [x, y]);
+  const rows = (y) => Array.from({ length: png.width }, (_, x) => [x, y]);
+  assert.ok(opaqueShare(cols(0)) > 0.95, '왼쪽 가장자리에 투명한 틈이 있어요');
+  assert.ok(opaqueShare(cols(png.width - 1)) > 0.95, '오른쪽 가장자리에 투명한 틈이 있어요');
+  assert.ok(opaqueShare(rows(0)) > 0.95, '위쪽 가장자리에 투명한 틈이 있어요');
+  assert.ok(opaqueShare(rows(png.height - 1)) > 0.95, '아래쪽 가장자리에 투명한 틈이 있어요');
+});

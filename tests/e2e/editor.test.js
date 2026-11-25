@@ -286,7 +286,7 @@ test('금속 패널 벽(가로 1칸 × 세로 3칸)은 세 칸을 차지하고 �
     const i = document.querySelector('.palette-block[data-block-id="panel_1"] img');
     return i ? { w: i.naturalWidth, h: i.naturalHeight } : null;
   });
-  assert.deepEqual(img, { w: 667, h: 2000 }, '원본 그림 그대로 쓴다');
+  assert.deepEqual(img, { w: 620, h: 1860 }, '여백을 잘라 칸에 꽉 차게 맞춘 그림');
   await clickCell(env.page, 5, 28);
   assert.equal(await count(env.page), 0, '아래 두 칸이 맵 밖이라 놓이지 않는다');
   await clickCell(env.page, 5, 27);
