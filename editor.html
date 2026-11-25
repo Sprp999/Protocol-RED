@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Protocol-RED 맵 편집</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-editor">
+  <header class="editor-top">
+    <a id="btn-back" href="index.html">← 맵 목록</a>
+    <strong id="map-title"></strong>
+    <span class="spacer"></span>
+    <button id="btn-undo" title="되돌리기 (Ctrl+Z)">되돌리기</button>
+    <button id="btn-redo" title="다시하기 (Ctrl+Y)">다시하기</button>
+    <span id="save-status" role="status">저장됨</span>
+  </header>
+  <div id="quota-banner" class="banner hidden" role="alert"></div>
+  <p id="not-found" class="empty hidden">맵을 찾을 수 없어요. <a href="index.html">맵 목록으로 돌아가기</a></p>
+  <div class="editor-body" id="editor-body">
+    <aside class="sidebar">
+      <section>
+        <h3>도구</h3>
+        <div class="btn-row">
+          <button data-tool="brush" class="active">붓</button>
+          <button data-tool="erase">지우개</button>
+        </div>
+      </section>
+      <section>
+        <h3>층</h3>
+        <div class="btn-row">
+          <button data-layer="floor" class="active">바닥</button>
+          <button data-layer="objects">물건</button>
+        </div>
+      </section>
+      <section class="palette-section">
+        <div id="palette-tabs" class="tabs"></div>
+        <div id="palette" class="palette"></div>
+      </section>
+    </aside>
+    <main class="stage" id="stage">
+      <canvas id="map-canvas"></canvas>
+      <div class="zoombar">
+        <button id="btn-zoom-out" title="축소">−</button>
+        <span id="zoom-label">100%</span>
+        <button id="btn-zoom-in" title="확대">＋</button>
+        <button id="btn-fit">전체 보기</button>
+        <button id="btn-grid" class="active">격자</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="data/blocks.js"></script>
+  <script src="js/mapmodel.js"></script>
+  <script src="js/mapformat.js"></script>
+  <script src="js/viewmath.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/blocks.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/editor.js"></script>
+</body>
+</html>
