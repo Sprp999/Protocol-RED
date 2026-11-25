@@ -154,6 +154,15 @@
     return { ops: [{ t: 'place', layer, removed: [p], added: [] }] };
   }
 
+  // 눈에 보이는 맨 위 블록부터 지운다 (물건 → 벽 → 바닥). 어느 층이든 칸에 블록이 있으면 항상 지울 수 있다.
+  function eraseTopAt(map, x, y) {
+    for (let i = LAYERS.length - 1; i >= 0; i--) {
+      const patch = eraseAt(map, LAYERS[i], x, y);
+      if (patch) return patch;
+    }
+    return null;
+  }
+
   function fillRect(map, layer, block, x0, y0, x1, y1) {
     const ax = Math.min(x0, x1), bx = Math.max(x0, x1);
     const ay = Math.min(y0, y1), by = Math.max(y0, y1);
@@ -271,6 +280,7 @@
     createMap,
     placeBlock,
     eraseAt,
+    eraseTopAt,
     fillRect,
     eraseRect,
     toggleStart,

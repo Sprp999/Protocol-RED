@@ -271,7 +271,19 @@
       if (!b) return null;
       return MM.placeBlock(map, b.layer, { id: b.id, w: b.w, h: b.h }, cell.x, cell.y);
     }
-    if (state.tool === 'erase') return MM.eraseAt(map, state.layer, cell.x, cell.y);
+    if (state.tool === 'erase') {
+      // 한 번 끄는 동안, 방금 지운 여러 칸 블록이 있던 칸은 건너뛴다 (그 아래 블록까지 파고들어 지우지 않도록)
+      const st = state.stroke;
+      const key = cell.y * map.width + cell.x;
+      if (st && st.cleared.has(key)) return null;
+      const patch = MM.eraseTopAt(map, cell.x, cell.y);
+      if (patch && st) {
+        for (const r of patch.ops[0].removed) {
+          for (let yy = r.y; yy < r.y + r.h; yy++) for (let xx = r.x; xx < r.x + r.w; xx++) st.cleared.add(yy * map.width + xx);
+        }
+      }
+      return patch;
+    }
     return null;
   }
   function commitOne(patch) {
@@ -323,7 +335,7 @@
       requestDraw();
       return;
     }
-    state.stroke = { patches: [], last: null };
+    state.stroke = { patches: [], last: null, cleared: new Set() };
     strokeTo(cell);
   });
   canvas.addEventListener('pointermove', (e) => {

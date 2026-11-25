@@ -77,7 +77,7 @@ test('여러 칸 구조물은 가장자리에 걸치면 놓이지 않고, 다른
   assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.objects[0].b), 'test_crate');
 });
 
-test('층에 따라 팔레트가 바뀌고, 지우개는 선택한 층만 지운다', async () => {
+test('층에 따라 팔레트가 바뀌고, 지우개는 맨 위 블록부터 지운다', async () => {
   await openEditor(env.page);
   await pick(env.page, 'test_floor_gray');
   await clickCell(env.page, 5, 5);
@@ -93,6 +93,8 @@ test('층에 따라 팔레트가 바뀌고, 지우개는 선택한 층만 지운
     return [m.layers.floor.length, m.layers.objects.length];
   });
   assert.deepEqual(left, [1, 0]);
+  await clickCell(env.page, 5, 5);
+  assert.equal(await count(env.page), 0, '다시 누르면 아래 바닥도 지워진다');
 });
 
 test('확대·축소 버튼은 400%와 1%에서 멈춘다', async () => {
@@ -323,8 +325,10 @@ test('벽 앞에 물건을 놓으면 벽이 지워지지 않고 겹쳐 보인다
   assert.equal(await count(env.page), 2);
   await env.page.click('[data-layer=walls]');
   await clickCell(env.page, 5, 6);
-  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walls.length), 0);
-  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.objects.length), 1);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.objects.length), 0, '어느 층이 선택돼 있어도 맨 위 물건이 먼저 지워진다');
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walls.length), 1);
+  await clickCell(env.page, 5, 6);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walls.length), 0, '물건이 없으면 그 아래 벽이 지워진다');
   assert.deepEqual(env.errors, []);
 });
 
@@ -374,4 +378,51 @@ test('벽 윗면(천장) 블록은 벽 층의 막히는 블록이고, 그 위에
   await clickCell(env.page, 4, 3);
   assert.equal(await count(env.page), 5, '벽 윗면 위에 물건을 놓아도 벽이 지워지지 않는다');
   assert.deepEqual(env.errors, []);
+});
+
+test('지우개는 선택한 층과 상관없이 항상 눈에 보이는 맨 위 블록부터 지우고, 되돌리기로 하나씩 복구된다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'floor_light_1');
+  await clickCell(env.page, 3, 3);
+  await pick(env.page, 'wall_top_1');
+  await clickCell(env.page, 3, 3);
+  await pick(env.page, 'test_crate');
+  await clickCell(env.page, 3, 3);
+  assert.equal(await count(env.page), 3);
+  await env.page.click('[data-layer=floor]'); // 일부러 맨 아래 층을 선택해 둔다
+  await env.page.click('[data-tool=erase]');
+  const left = () => env.page.evaluate(() => {
+    const m = window.__editor.getMap();
+    return [m.layers.floor.length, m.layers.walls.length, m.layers.objects.length];
+  });
+  await clickCell(env.page, 3, 3);
+  assert.deepEqual(await left(), [1, 1, 0], '물건이 먼저');
+  await clickCell(env.page, 3, 3);
+  assert.deepEqual(await left(), [1, 0, 0], '그다음 벽');
+  await clickCell(env.page, 3, 3);
+  assert.deepEqual(await left(), [0, 0, 0], '마지막으로 바닥');
+  await env.page.keyboard.press('Control+z');
+  assert.deepEqual(await left(), [1, 0, 0]);
+  await env.page.keyboard.press('Control+z');
+  await env.page.keyboard.press('Control+z');
+  assert.deepEqual(await left(), [1, 1, 1]);
+});
+
+test('끌어서 지울 때 두 칸짜리 물건을 지운 뒤 그 아래 벽까지 파고들어 지우지 않는다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'test_wall');
+  await clickCell(env.page, 5, 5);
+  await clickCell(env.page, 5, 6);
+  await pick(env.page, 'capsule_1');
+  await clickCell(env.page, 5, 5);
+  assert.equal(await count(env.page), 3);
+  await env.page.click('[data-tool=erase]');
+  await dragCells(env.page, 5, 5, 5, 6);
+  const left = await env.page.evaluate(() => {
+    const m = window.__editor.getMap();
+    return [m.layers.walls.length, m.layers.objects.length];
+  });
+  assert.deepEqual(left, [2, 0], '캡슐만 지워지고 벽 두 칸은 남는다');
+  await env.page.keyboard.press('Control+z');
+  assert.equal(await count(env.page), 3, '끌어서 지운 것은 되돌리기 한 번에 복구');
 });

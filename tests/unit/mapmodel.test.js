@@ -294,3 +294,34 @@ test('벽 층의 지우기·되돌리기·크기 변경이 다른 층과 똑같�
   assert.equal(snap(m), before);
   assert.deepEqual(M.LAYERS, ['floor', 'walls', 'objects']);
 });
+
+test('eraseTopAt은 보이는 맨 위 블록부터 지운다 (물건 → 벽 → 바닥)', () => {
+  const m = newMap();
+  M.placeBlock(m, 'floor', blk('g'), 5, 5);
+  M.placeBlock(m, 'walls', blk('wall'), 5, 5);
+  M.placeBlock(m, 'objects', blk('crate'), 5, 5);
+  const before = snap(m);
+  const p1 = M.eraseTopAt(m, 5, 5);
+  assert.equal(M.placementAt(m, 'objects', 5, 5), null);
+  assert.ok(M.placementAt(m, 'walls', 5, 5) && M.placementAt(m, 'floor', 5, 5));
+  const p2 = M.eraseTopAt(m, 5, 5);
+  assert.equal(M.placementAt(m, 'walls', 5, 5), null);
+  assert.ok(M.placementAt(m, 'floor', 5, 5));
+  const p3 = M.eraseTopAt(m, 5, 5);
+  assert.equal(M.countPlacements(m), 0);
+  assert.equal(M.eraseTopAt(m, 5, 5), null, '빈 칸이면 null');
+  M.revertPatch(m, p3); M.revertPatch(m, p2); M.revertPatch(m, p1);
+  assert.equal(snap(m), before);
+});
+
+test('eraseTopAt은 여러 칸 블록의 어느 칸을 눌러도 통째로 지우고, 맵 밖은 null', () => {
+  const m = newMap();
+  M.placeBlock(m, 'walls', blk('panel', 1, 3), 7, 7);
+  M.placeBlock(m, 'objects', blk('capsule', 1, 2), 7, 8);
+  const p = M.eraseTopAt(m, 7, 9);
+  assert.equal(p.ops[0].removed[0].b, 'capsule');
+  assert.equal(M.placementAt(m, 'objects', 7, 8), null);
+  assert.equal(M.placementAt(m, 'walls', 7, 8).b, 'panel');
+  assert.equal(M.eraseTopAt(m, -1, 0), null);
+  assert.equal(M.eraseTopAt(m, 40, 0), null);
+});
