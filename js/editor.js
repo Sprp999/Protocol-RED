@@ -179,6 +179,13 @@
     }
     const pal = $('palette');
     pal.textContent = '';
+    if (!PR.Blocks.byLayer(state.layer).length) {
+      const empty = document.createElement('p');
+      empty.id = 'palette-empty';
+      empty.className = 'palette-empty';
+      empty.textContent = '이 층에는 아직 블록이 없어요. 블록 그림을 등록하면 여기에 나타나요.';
+      pal.appendChild(empty);
+    }
     for (const b of PR.Blocks.byLayer(state.layer).filter((x) => x.category === state.category)) {
       const btn = document.createElement('button');
       btn.className = 'palette-block' + (b.id === state.blockId ? ' active' : '');

@@ -16,11 +16,11 @@ async function openBigMap(page) {
   const id = await page.evaluate(() => {
     const MM = window.PR.MapModel;
     const m = window.__store.createMap({ name: '큰 맵', width: 200, height: 200 });
-    MM.fillRect(m, 'floor', { id: 'tmp_floor_gray', w: 1, h: 1 }, 0, 0, 199, 199);
+    MM.fillRect(m, 'floor', { id: 'test_floor_gray', w: 1, h: 1 }, 0, 0, 199, 199);
     let n = 0;
     for (let y = 0; y < 200 && n < 8000; y += 2) {
       for (let x = 0; x < 200 && n < 8000; x += 2) {
-        MM.placeBlock(m, 'objects', { id: n % 2 ? 'tmp_wall' : 'tmp_crate', w: 1, h: 1 }, x, y);
+        MM.placeBlock(m, 'objects', { id: n % 2 ? 'test_wall' : 'test_crate', w: 1, h: 1 }, x, y);
         n++;
       }
     }
@@ -69,14 +69,14 @@ test('200×200 맵 전체 보기와 100% 화면 모두 한 번 그리는 데 50m
 
 test('큰 맵에서 블록을 칠하고 되돌리기가 200ms 안에 끝난다', async () => {
   await openBigMap(env.page);
-  await pick(env.page, 'tmp_floor_dirt');
+  await pick(env.page, 'test_floor_dirt');
   await env.page.evaluate(() => { window.__editor.getView().scale = 1; });
   await clickCell(env.page, 0, 0).catch(() => {});
   const ms = await env.page.evaluate(() => {
     const MM = window.PR.MapModel;
     const m = window.__editor.getMap();
     const t0 = performance.now();
-    const patch = MM.fillRect(m, 'floor', { id: 'tmp_floor_dirt', w: 1, h: 1 }, 0, 0, 199, 199);
+    const patch = MM.fillRect(m, 'floor', { id: 'test_floor_dirt', w: 1, h: 1 }, 0, 0, 199, 199);
     const t1 = performance.now();
     MM.revertPatch(m, patch);
     return { fill: t1 - t0, undo: performance.now() - t1 };

@@ -101,8 +101,8 @@ test('맵 50개도 모두 보이고 오류가 없으며 썸네일이 그려진�
     const MM = window.PR.MapModel;
     for (let i = 1; i <= 50; i++) {
       const m = window.__store.createMap({ name: '맵 ' + i, width: 60, height: 40 });
-      MM.fillRect(m, 'floor', { id: 'tmp_floor_gray', w: 1, h: 1 }, 0, 0, 59, 39);
-      MM.placeBlock(m, 'objects', { id: 'tmp_house', w: 3, h: 2 }, 5, 5);
+      MM.fillRect(m, 'floor', { id: 'test_floor_gray', w: 1, h: 1 }, 0, 0, 59, 39);
+      MM.placeBlock(m, 'objects', { id: 'test_house', w: 3, h: 2 }, 5, 5);
       window.__store.saveMap(m);
     }
   });

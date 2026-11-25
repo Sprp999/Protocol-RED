@@ -39,24 +39,24 @@ test('열면 캔버스가 보이고 맵 전체가 화면 안에 들어온다', a
 
 test('블록을 놓고 되돌리고 다시하고, 같은 칸에 다른 블록을 놓으면 대체된다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await clickCell(env.page, 3, 3);
   assert.equal(await count(env.page), 1);
   await env.page.keyboard.press('Control+z');
   assert.equal(await count(env.page), 0);
   await env.page.keyboard.press('Control+y');
   assert.equal(await count(env.page), 1);
-  await pick(env.page, 'tmp_floor_dirt');
+  await pick(env.page, 'test_floor_dirt');
   await clickCell(env.page, 3, 3);
   assert.equal(await count(env.page), 1);
-  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.floor[0].b), 'tmp_floor_dirt');
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.floor[0].b), 'test_floor_dirt');
   await env.page.click('#btn-undo');
-  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.floor[0].b), 'tmp_floor_gray');
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.floor[0].b), 'test_floor_gray');
 });
 
 test('끌어서 놓은 블록은 되돌리기 한 번에 모두 사라진다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await dragCells(env.page, 2, 2, 6, 2);
   assert.equal(await count(env.page), 5);
   await env.page.keyboard.press('Control+z');
@@ -66,24 +66,24 @@ test('끌어서 놓은 블록은 되돌리기 한 번에 모두 사라진다', a
 test('여러 칸 구조물은 가장자리에 걸치면 놓이지 않고, 다른 블록이 겹치면 통째로 대체된다', async () => {
   await openEditor(env.page);
   await env.page.click('[data-layer=objects]');
-  await pick(env.page, 'tmp_house');
+  await pick(env.page, 'test_house');
   await clickCell(env.page, 39, 0);
   assert.equal(await count(env.page), 0);
   await clickCell(env.page, 37, 0);
   assert.equal(await count(env.page), 1);
-  await pick(env.page, 'tmp_crate');
+  await pick(env.page, 'test_crate');
   await clickCell(env.page, 38, 1);
   assert.equal(await count(env.page), 1);
-  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.objects[0].b), 'tmp_crate');
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.objects[0].b), 'test_crate');
 });
 
 test('층에 따라 팔레트가 바뀌고, 지우개는 선택한 층만 지운다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await clickCell(env.page, 5, 5);
   await env.page.click('[data-layer=objects]');
-  assert.equal(await env.page.locator('.palette-block[data-block-id="tmp_floor_gray"]').count(), 0);
-  await pick(env.page, 'tmp_crate');
+  assert.equal(await env.page.locator('.palette-block[data-block-id="test_floor_gray"]').count(), 0);
+  await pick(env.page, 'test_crate');
   await clickCell(env.page, 5, 5);
   assert.equal(await count(env.page), 2);
   await env.page.click('[data-tool=erase]');
@@ -141,7 +141,7 @@ test('스페이스를 누른 채 끌면 화면이 이동한다', async () => {
 
 test('자동 저장되어 새로고침해도 블록이 남는다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await clickCell(env.page, 4, 4);
   await env.page.waitForFunction(() => document.getElementById('save-status').textContent.includes('저장됨'));
   await env.page.reload();
@@ -154,7 +154,7 @@ test('저장 공간이 가득 차면 경고를 보이고 작업은 화면에 남
   await env.page.evaluate(() => {
     Storage.prototype.setItem = function () { throw new DOMException('가득', 'QuotaExceededError'); };
   });
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await clickCell(env.page, 4, 4);
   await env.page.waitForFunction(() => document.getElementById('save-status').textContent.includes('저장 실패'));
   assert.equal(await env.page.locator('#quota-banner').isVisible(), true);
@@ -199,7 +199,7 @@ test('그림이 있는 블록은 팔레트와 맵에 그림으로 보인다', as
 
 test('마우스 오른쪽 버튼을 누르고 끌면 블록은 놓이지 않고 화면만 이동한다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   const before = await env.page.evaluate(() => ({ x: window.__editor.getView().x, y: window.__editor.getView().y }));
   await env.page.mouse.move(500, 300);
   await env.page.mouse.down({ button: 'right' });
@@ -213,4 +213,23 @@ test('마우스 오른쪽 버튼을 누르고 끌면 블록은 놓이지 않고 
   // 이동 뒤에는 왼쪽 버튼으로 정상적으로 놓인다
   await clickCell(env.page, 3, 3);
   assert.equal(await count(env.page), 1);
+});
+
+test('블록이 하나도 없는 층은 안내 문구를 보이고 오류 없이 동작한다', async () => {
+  const bare = await launch({ fixture: false });
+  try {
+    bare.page.setDefaultTimeout(5000);
+    await openEditor(bare.page);
+    await bare.page.click('[data-layer=objects]');
+    assert.equal(await bare.page.locator('#palette-empty').isVisible(), true);
+    assert.equal(await bare.page.locator('.palette-block').count(), 0);
+    await clickCell(bare.page, 3, 3);
+    assert.equal(await count(bare.page), 0, '고른 블록이 없으면 아무것도 놓이지 않는다');
+    await bare.page.click('[data-layer=floor]');
+    assert.equal(await bare.page.locator('#palette-empty').count(), 0);
+    assert.ok(await bare.page.locator('.palette-block').count() >= 1);
+    assert.deepEqual(bare.errors, []);
+  } finally {
+    await bare.browser.close();
+  }
 });

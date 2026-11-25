@@ -20,13 +20,13 @@ test('내보낸 파일을 새 브라우저에서 불러오면 같은 맵이 열�
     await a.page.click('#new-ok');
     await a.page.click('.map-card .btn-open');
     await a.page.waitForFunction(() => window.__editor && window.__editor.getMap());
-    await pick(a.page, 'tmp_floor_gray');
+    await pick(a.page, 'test_floor_gray');
     await a.page.click('[data-tool=rect]');
     await dragCells(a.page, 0, 0, 23, 15);
     await a.page.click('[data-tool=brush]');
-    await pick(a.page, 'tmp_house');
+    await pick(a.page, 'test_house');
     await clickCell(a.page, 4, 3);
-    await pick(a.page, 'tmp_wall');
+    await pick(a.page, 'test_wall');
     await dragCells(a.page, 0, 0, 10, 0);
     await a.page.keyboard.press('Control+z');
     await a.page.click('[data-tool=start]');

@@ -18,7 +18,7 @@ const mapInfo = (page) => page.evaluate(() => {
 
 test('사각형 도구는 영역을 한 번에 채우고 되돌리기 한 번에 취소된다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await env.page.click('[data-tool=rect]');
   await dragCells(env.page, 2, 2, 5, 4, { release: false });
   const sel = await env.page.evaluate(() => window.__editor.getSelection());
@@ -29,7 +29,7 @@ test('사각형 도구는 영역을 한 번에 채우고 되돌리기 한 번에
   assert.equal(await env.page.evaluate(() => window.__editor.getSelection()), null);
   await env.page.keyboard.press('Control+z');
   assert.equal(await count(env.page), 0);
-  await pick(env.page, 'tmp_house');
+  await pick(env.page, 'test_house');
   await env.page.click('[data-tool=rect]');
   await dragCells(env.page, 0, 0, 5, 3);
   assert.equal(await count(env.page), 4);
@@ -37,7 +37,7 @@ test('사각형 도구는 영역을 한 번에 채우고 되돌리기 한 번에
 
 test('지우개를 끌면 한 번의 되돌리기로 복구되고, 시작·출구 표시는 지우지 않는다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await dragCells(env.page, 2, 2, 6, 2);
   await env.page.click('[data-tool=start]');
   await clickCell(env.page, 4, 2);
@@ -98,11 +98,11 @@ test('격자 켜기/끄기 상태가 새로고침 뒤에도 유지된다', async
 
 test('크기를 줄여서 잘리는 블록이 있으면 개수를 알려주고 확인을 받는다', async () => {
   await openEditor(env.page);
-  await pick(env.page, 'tmp_floor_gray');
+  await pick(env.page, 'test_floor_gray');
   await clickCell(env.page, 5, 5);
-  await pick(env.page, 'tmp_crate');
+  await pick(env.page, 'test_crate');
   await clickCell(env.page, 39, 29);
-  await pick(env.page, 'tmp_house');
+  await pick(env.page, 'test_house');
   await clickCell(env.page, 37, 0);
   await env.page.click('#btn-resize');
   await env.page.fill('#resize-width', '20');

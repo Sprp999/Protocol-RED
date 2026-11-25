@@ -101,3 +101,5 @@ a.btn-open:hover { border-color: var(--accent-2); }
 #zoom-label { min-width: 48px; text-align: center; }
 @media (max-width: 700px) { .sidebar { width: 150px; } .palette { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .modal .note { color: var(--muted); margin: 12px 0 0; font-size: 12px; }
+
+.palette-empty { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin: 4px 0; line-height: 1.5; }

@@ -3,9 +3,27 @@ const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
-async function launch() {
+// 시험에서만 쓰는 블록. 진짜 블록 목록(data/blocks.js)에는 들어 있지 않다.
+const TEST_BLOCKS = [
+  { id: 'test_floor_gray', name: '시험 회색 바닥', layer: 'floor', category: '바닥', w: 1, h: 1, solid: false, color: '#4a4a4a' },
+  { id: 'test_floor_dirt', name: '시험 흙 바닥', layer: 'floor', category: '바닥', w: 1, h: 1, solid: false, color: '#6b4a2b' },
+  { id: 'test_wall', name: '시험 벽', layer: 'objects', category: '벽', w: 1, h: 1, solid: true, color: '#8a8a99' },
+  { id: 'test_crate', name: '시험 상자', layer: 'objects', category: '물건', w: 1, h: 1, solid: true, color: '#a8742f' },
+  { id: 'test_house', name: '시험 건물 3x2', layer: 'objects', category: '건물', w: 3, h: 2, solid: true, color: '#a33a3a' },
+];
+
+// fixture: false 이면 진짜 블록 목록만 쓴다
+async function launch({ fixture = true } = {}) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true });
+  if (fixture) {
+    const defs = require('../../data/blocks.js').concat(TEST_BLOCKS);
+    // data/blocks.js가 나중에 실행되어도 이 목록이 유지되도록, 대입은 무시하는 속성으로 만든다
+    await context.addInitScript((list) => {
+      window.PR = window.PR || {};
+      Object.defineProperty(window.PR, 'BLOCK_DEFS', { configurable: true, get: () => list, set() {} });
+    }, defs);
+  }
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -58,4 +76,4 @@ async function dragCells(page, x0, y0, x1, y1, { release = true } = {}) {
   if (release) await page.mouse.up();
 }
 
-module.exports = { launch, pageUrl, cellToScreen, openEditor, count, pick, clickCell, dragCells, ROOT };
+module.exports = { TEST_BLOCKS, launch, pageUrl, cellToScreen, openEditor, count, pick, clickCell, dragCells, ROOT };
