@@ -12,12 +12,12 @@ const TEST_BLOCKS = [
   { id: 'test_house', name: '시험 건물 3x2', layer: 'objects', category: '건물', w: 3, h: 2, solid: true, color: '#a33a3a' },
 ];
 
-// fixture: false 이면 진짜 블록 목록만 쓴다
-async function launch({ fixture = true } = {}) {
+// fixture: false 이면 진짜 블록 목록만 쓰고, defs 를 주면 그 목록만 쓴다
+async function launch({ fixture = true, defs: onlyDefs = null } = {}) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true });
-  if (fixture) {
-    const defs = require('../../data/blocks.js').concat(TEST_BLOCKS);
+  if (fixture || onlyDefs) {
+    const defs = onlyDefs || require('../../data/blocks.js').concat(TEST_BLOCKS);
     // data/blocks.js가 나중에 실행되어도 이 목록이 유지되도록, 대입은 무시하는 속성으로 만든다
     await context.addInitScript((list) => {
       window.PR = window.PR || {};

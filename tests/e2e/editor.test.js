@@ -216,7 +216,8 @@ test('마우스 오른쪽 버튼을 누르고 끌면 블록은 놓이지 않고 
 });
 
 test('블록이 하나도 없는 층은 안내 문구를 보이고 오류 없이 동작한다', async () => {
-  const bare = await launch({ fixture: false });
+  const floorOnly = require('../../data/blocks.js').filter((b) => b.layer === 'floor');
+  const bare = await launch({ defs: floorOnly });
   try {
     bare.page.setDefaultTimeout(5000);
     await openEditor(bare.page);
@@ -241,4 +242,25 @@ test('시작·출구 도구는 화면에 없고, 새 맵은 아무것도 없이 
   assert.equal(await count(env.page), 0);
   const tools = await env.page.locator('[data-tool]').evaluateAll((els) => els.map((e) => e.dataset.tool));
   assert.deepEqual(tools, ['brush', 'rect', 'erase']);
+});
+
+test('배양 캡슐(가로 1칸 × 세로 2칸)은 두 칸을 차지하고 그림으로 보인다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'capsule_1');
+  const img = await env.page.evaluate(() => {
+    const i = document.querySelector('.palette-block[data-block-id="capsule_1"] img');
+    return i ? { w: i.naturalWidth, h: i.naturalHeight } : null;
+  });
+  assert.deepEqual(img, { w: 64, h: 128 });
+  await clickCell(env.page, 10, 29);
+  assert.equal(await count(env.page), 0, '맨 아래 칸에서는 아래가 맵 밖이라 놓이지 않는다');
+  await clickCell(env.page, 10, 20);
+  assert.equal(await count(env.page), 1);
+  const p = await env.page.evaluate(() => window.__editor.getMap().layers.objects[0]);
+  assert.deepEqual([p.b, p.x, p.y, p.w, p.h], ['capsule_1', 10, 20, 1, 2]);
+  // 아래 칸을 지우개로 눌러도 캡슐 전체가 지워진다
+  await env.page.click('[data-tool=erase]');
+  await clickCell(env.page, 10, 21);
+  assert.equal(await count(env.page), 0);
+  assert.deepEqual(env.errors, []);
 });
