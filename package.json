@@ -1,0 +1,10 @@
+{
+  "name": "protocol-red-map-editor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Protocol-RED 맵 제작 도구",
+  "scripts": {
+    "test": "node --test \"tests/unit/*.test.js\"",
+    "test:e2e": "node --test \"tests/e2e/*.test.js\""
+  }
+}
