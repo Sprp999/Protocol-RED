@@ -36,6 +36,13 @@
       return true;
     }
   }
+  function readShadePref() {
+    try {
+      return window.localStorage.getItem('pr.shade') !== '0';
+    } catch (e) {
+      return true;
+    }
+  }
   const history = PR.History.createHistory(100);
   const canvas = $('map-canvas');
   const ctx = canvas.getContext('2d');
@@ -47,6 +54,7 @@
     blockId: null,
     category: null,
     showGrid: readGridPref(),
+    edgeShade: readShadePref(),
     space: false,
     panning: null,
     stroke: null,
@@ -89,7 +97,7 @@
       const { x, y } = state.hover;
       ghost = { block, x, y, valid: x >= 0 && y >= 0 && x + block.w <= map.width && y + block.h <= map.height };
     }
-    lastDraw = PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost, rect: state.rect, markers: true });
+    lastDraw = PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost, rect: state.rect, markers: true, edgeShade: state.edgeShade });
     drawCount++;
     // 화면에 움직이는 블록이 있을 때만 그 속도에 맞춰 계속 다시 그린다
     clearTimeout(animTimer);
@@ -289,6 +297,15 @@
   $('btn-zoom-out').onclick = () => zoomBy(0.8, state.cssW / 2, state.cssH / 2);
   $('btn-fit').onclick = () => {
     state.view = VM.fitView(map.width, map.height, state.cssW, state.cssH);
+    requestDraw();
+  };
+  $('btn-shade').classList.toggle('active', state.edgeShade);
+  $('btn-shade').onclick = () => {
+    state.edgeShade = !state.edgeShade;
+    try {
+      window.localStorage.setItem('pr.shade', state.edgeShade ? '1' : '0');
+    } catch (e) { /* 저장이 안 돼도 동작에는 문제없다 */ }
+    $('btn-shade').classList.toggle('active', state.edgeShade);
     requestDraw();
   };
   $('btn-grid').onclick = () => {

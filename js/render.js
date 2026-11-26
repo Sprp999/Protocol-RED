@@ -51,6 +51,101 @@
     ctx.globalAlpha = 1;
   }
 
+  // ---------- 검은 빈 칸에 닿은 블록의 가장자리를 어둡게 (그라데이션) ----------
+  const SHADE_MIN_CELL = 8;      // 칸이 이보다 작으면 티가 안 나서 그리지 않는다
+  const SHADE_DEPTH = 0.32;      // 칸 크기에 대한 어두운 폭
+  const SHADE_ALPHA = 0.65;      // 가장자리 끝의 어두운 정도
+  const shadeCache = new Map();  // 칸 크기(px) → 가장자리·모서리 그림 모음
+
+  // [x0..x1]×[y0..y1] 안에서, 블록이 있는데 이웃이 빈 칸(또는 맵 밖)인 칸과 어느 변·모서리가 닿는지 돌려준다.
+  function edgeShadeCells(map, x0, y0, x1, y1) {
+    const occ = root.PR.MapModel.isOccupied;
+    const out = [];
+    for (let y = Math.max(0, y0); y <= Math.min(map.height - 1, y1); y++) {
+      for (let x = Math.max(0, x0); x <= Math.min(map.width - 1, x1); x++) {
+        if (!occ(map, x, y)) continue;
+        const top = !occ(map, x, y - 1), bottom = !occ(map, x, y + 1);
+        const left = !occ(map, x - 1, y), right = !occ(map, x + 1, y);
+        // 안쪽 모서리: 위·옆은 채워져 있는데 대각선만 비어 있는 경우
+        const cornerTL = !top && !left && !occ(map, x - 1, y - 1);
+        const cornerTR = !top && !right && !occ(map, x + 1, y - 1);
+        const cornerBL = !bottom && !left && !occ(map, x - 1, y + 1);
+        const cornerBR = !bottom && !right && !occ(map, x + 1, y + 1);
+        if (top || bottom || left || right || cornerTL || cornerTR || cornerBL || cornerBR) {
+          out.push({ x, y, top, right, bottom, left, cornerTL, cornerTR, cornerBL, cornerBR });
+        }
+      }
+    }
+    return out;
+  }
+
+  function makeShadeSprites(size) {
+    const d = Math.max(2, Math.round(size * SHADE_DEPTH));
+    const make = () => {
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      return c;
+    };
+    const stops = (g) => {
+      g.addColorStop(0, 'rgba(0,0,0,' + SHADE_ALPHA + ')');
+      g.addColorStop(0.5, 'rgba(0,0,0,' + (SHADE_ALPHA * 0.35) + ')');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      return g;
+    };
+    const linear = (x0, y0, x1, y1, rx, ry, rw, rh) => {
+      const c = make();
+      const g = c.getContext('2d');
+      g.fillStyle = stops(g.createLinearGradient(x0, y0, x1, y1));
+      g.fillRect(rx, ry, rw, rh);
+      return c;
+    };
+    const corner = (cx, cy, rx, ry) => {
+      const c = make();
+      const g = c.getContext('2d');
+      g.fillStyle = stops(g.createRadialGradient(cx, cy, 0, cx, cy, d));
+      g.fillRect(rx, ry, d, d);
+      return c;
+    };
+    return {
+      top: linear(0, 0, 0, d, 0, 0, size, d),
+      bottom: linear(0, size, 0, size - d, 0, size - d, size, d),
+      left: linear(0, 0, d, 0, 0, 0, d, size),
+      right: linear(size, 0, size - d, 0, size - d, 0, d, size),
+      cornerTL: corner(0, 0, 0, 0),
+      cornerTR: corner(size, 0, size - d, 0),
+      cornerBL: corner(0, size, 0, size - d),
+      cornerBR: corner(size, size, size - d, size - d),
+    };
+  }
+
+  function shadeSprites(cellPx) {
+    const size = Math.max(SHADE_MIN_CELL, Math.round(cellPx));
+    let sprites = shadeCache.get(size);
+    if (!sprites) {
+      if (shadeCache.size > 12) shadeCache.clear();
+      sprites = makeShadeSprites(size);
+      shadeCache.set(size, sprites);
+    }
+    return sprites;
+  }
+
+  function drawEdgeShade(ctx, map, view, cellPx, r) {
+    const sprites = shadeSprites(cellPx);
+    let count = 0;
+    for (const c of edgeShadeCells(map, r.x0, r.y0, r.x1, r.y1)) {
+      const x0 = Math.round(view.x + c.x * cellPx), y0 = Math.round(view.y + c.y * cellPx);
+      const x1 = Math.round(view.x + (c.x + 1) * cellPx), y1 = Math.round(view.y + (c.y + 1) * cellPx);
+      for (const kind of ['top', 'right', 'bottom', 'left', 'cornerTL', 'cornerTR', 'cornerBL', 'cornerBR']) {
+        if (c[kind]) {
+          ctx.drawImage(sprites[kind], x0, y0, x1 - x0, y1 - y0);
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
   // ---------- 아주 작게 볼 때: 맵 전체를 1칸=1픽셀 그림 한 장으로 ----------
   const rasters = new WeakMap(); // 맵 → { rev, canvas }
   const rgbCache = new Map();
@@ -104,8 +199,9 @@
   }
 
   function drawMap(ctx, map, view, opts) {
-    const { viewW, viewH, showGrid, ghost, rect, markers } = opts;
+    const { viewW, viewH, showGrid, ghost, rect, markers, edgeShade } = opts;
     animFps = 0;
+    let shaded = 0;
     clock = opts.time !== undefined ? opts.time : Date.now();
     const VM = root.PR.ViewMath;
     const MM = root.PR.MapModel;
@@ -134,6 +230,9 @@
           }
         }
       }
+
+      // 게임 화면과 같은 모양: 블록이 검은 빈 칸에 닿는 가장자리를 살짝 어둡게 (칸이 충분히 클 때만)
+      if (edgeShade && cellPx >= SHADE_MIN_CELL) shaded = drawEdgeShade(ctx, map, view, cellPx, r);
 
       if (showGrid && cellPx >= 8) {
         ctx.strokeStyle = 'rgba(255,255,255,0.14)';
@@ -183,7 +282,7 @@
       ctx.lineWidth = 2;
       ctx.strokeRect(rx0 + 1, ry0 + 1, rx1 - rx0 - 2, ry1 - ry0 - 2);
     }
-    return { drawn, animated: animFps };
+    return { drawn, animated: animFps, shaded };
   }
 
   // 맵 목록의 작은 그림: 맵을 만들지 않고 저장된 데이터(줄 단위)에서 바로 그린다
@@ -212,6 +311,6 @@
     ctx.strokeRect(Math.round(ox) - 0.5, Math.round(oy) - 0.5, Math.round(data.width * s) + 1, Math.round(data.height * s) + 1);
   }
 
-  PR.Render = { drawMap, drawThumbnailData };
+  PR.Render = { drawMap, drawThumbnailData, edgeShadeCells };
   if (typeof module !== 'undefined') module.exports = PR.Render;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

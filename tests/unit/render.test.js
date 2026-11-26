@@ -295,3 +295,88 @@ test('애니메이션이 없는 맵은 animated 가 0이라서 다시 그릴 필
   const res = R.drawMap(ctx, m, { scale: 1, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
   assert.equal(res.animated, 0);
 });
+
+// ---- 검은 빈 칸에 닿은 블록의 가장자리를 어둡게(그라데이션) ----
+const mapWith = (w, h, cells, layer = 'floor') => {
+  const m = M.createMap({ id: 's', name: 's', width: w, height: h });
+  for (const [x, y] of cells) M.placeBlock(m, layer, { id: 'g', w: 1, h: 1 }, x, y);
+  return m;
+};
+const shadeOf = (m, x, y) => R.edgeShadeCells(m, 0, 0, m.width - 1, m.height - 1).find((c) => c.x === x && c.y === y);
+
+test('edgeShadeCells: 혼자 있는 칸은 네 변이 모두 빈 칸에 닿는다', () => {
+  const m = mapWith(5, 5, [[2, 2]]);
+  const c = shadeOf(m, 2, 2);
+  assert.deepEqual([c.top, c.right, c.bottom, c.left], [true, true, true, true]);
+  assert.equal(R.edgeShadeCells(m, 0, 0, 4, 4).length, 1, '빈 칸은 대상이 아니다');
+});
+
+test('edgeShadeCells: 이웃한 블록끼리 맞닿은 변은 어둡게 하지 않는다', () => {
+  const m = mapWith(6, 6, [[2, 2], [3, 2]]);
+  const a = shadeOf(m, 2, 2), b = shadeOf(m, 3, 2);
+  assert.deepEqual([a.top, a.right, a.bottom, a.left], [true, false, true, true]);
+  assert.deepEqual([b.top, b.right, b.bottom, b.left], [true, true, true, false]);
+});
+
+test('edgeShadeCells: 맵 가장자리 바깥도 검은 빈 곳으로 본다', () => {
+  const m = mapWith(3, 3, [[0, 0], [1, 0], [0, 1], [1, 1]]);
+  const c = shadeOf(m, 0, 0);
+  assert.deepEqual([c.top, c.left, c.right, c.bottom], [true, true, false, false]);
+});
+
+test('edgeShadeCells: 바닥이 가득한 방은 바깥 테두리 칸만 어두워진다', () => {
+  const cells = [];
+  for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) cells.push([x, y]);
+  const m = mapWith(5, 5, cells);
+  const list = R.edgeShadeCells(m, 0, 0, 4, 4);
+  assert.equal(list.length, 16, '5×5 중 가장자리 16칸');
+  assert.equal(shadeOf(m, 2, 2), undefined);
+});
+
+test('edgeShadeCells: 대각선만 비어 있는 안쪽 모서리 칸에는 모서리 표시가 붙는다', () => {
+  const cells = [];
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) if (!(x === 0 && y === 0)) cells.push([x, y]); // (0,0)만 비움
+  const m = mapWith(3, 3, cells);
+  const c = shadeOf(m, 1, 1);
+  assert.deepEqual([c.top, c.right, c.bottom, c.left], [false, false, false, false]);
+  assert.equal(c.cornerTL, true);
+  assert.equal(c.cornerTR || c.cornerBL || c.cornerBR, false);
+});
+
+test('edgeShadeCells: 어느 층이든 블록이 있으면 채워진 칸이고, 보이는 범위 밖은 건너뛴다', () => {
+  const m = mapWith(8, 8, [[3, 3]], 'walls');
+  assert.ok(shadeOf(m, 3, 3));
+  assert.equal(R.edgeShadeCells(m, 0, 0, 2, 2).length, 0, '범위 밖');
+  assert.equal(R.edgeShadeCells(m, 3, 3, 3, 3).length, 1);
+});
+
+// 그라데이션 그림을 만들 수 있는 가짜 캔버스 환경
+function shadeEnv(fn) {
+  const saved = globalThis.document;
+  globalThis.document = {
+    createElement: () => ({
+      width: 0, height: 0,
+      getContext: () => new Proxy({}, {
+        get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}),
+        set: () => true,
+      }),
+    }),
+  };
+  try { return fn(); } finally { globalThis.document = saved; }
+}
+
+test('edgeShade를 켜면 빈 칸에 닿은 변마다 어두운 가장자리를 한 번씩 그리고, 끄거나 아주 작게 보면 그리지 않는다', () => shadeEnv(() => {
+  const m = mapWith(6, 6, [[2, 2]]);
+  const run = (scale, edgeShade) => {
+    const { ctx } = countingCtx();
+    const c = countingCtx();
+    const res = R.drawMap(c.ctx, m, { scale, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false, edgeShade });
+    return { res, calls: c.calls };
+  };
+  const on = run(1, true);
+  assert.equal(on.res.shaded, 4);
+  assert.equal(on.calls.drawImage, 4, '네 변');
+  assert.equal(run(1, false).res.shaded, 0);
+  assert.equal(run(1, undefined).res.shaded, 0, '기본은 끔(게임이 켜서 쓴다)');
+  assert.equal(run(0.05, true).res.shaded, 0, '칸이 너무 작으면 그리지 않는다');
+}));

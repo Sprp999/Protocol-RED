@@ -591,3 +591,27 @@ test('애니메이션이 화면에 없으면 쓸데없이 계속 다시 그리�
   assert.equal(c1, c0, '움직이는 블록이 없으면 다시 그리지 않는다');
   assert.equal(await env.page.evaluate(() => window.__editor.getLastDraw().animated), 0);
 });
+
+test('빈 칸에 닿은 블록 가장자리를 어둡게 하는 기능은 기본으로 켜져 있고, 버튼으로 끄고 켤 수 있다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'floor_light_1');
+  await clickCell(env.page, 5, 5);
+  await env.page.mouse.move(5, 5);
+  await env.page.waitForTimeout(200);
+  const shaded = () => env.page.evaluate(() => window.__editor.getLastDraw().shaded);
+  assert.equal(await env.page.locator('#btn-shade').count(), 1);
+  assert.equal(await env.page.evaluate(() => document.getElementById('btn-shade').classList.contains('active')), true);
+  assert.equal(await shaded(), 4, '혼자 있는 바닥 한 칸은 네 변이 어두워진다');
+  await clickCell(env.page, 6, 5);
+  await env.page.mouse.move(5, 5);
+  await env.page.waitForTimeout(200);
+  assert.equal(await shaded(), 6, '나란히 놓으면 맞닿은 변은 빼고 6변');
+  await env.page.click('#btn-shade');
+  await env.page.waitForTimeout(200);
+  assert.equal(await shaded(), 0);
+  await env.page.reload();
+  await env.page.waitForFunction(() => window.__editor && window.__editor.getMap());
+  await env.page.waitForTimeout(200);
+  assert.equal(await env.page.evaluate(() => document.getElementById('btn-shade').classList.contains('active')), false, '끈 상태가 기억된다');
+  assert.deepEqual(env.errors, []);
+});

@@ -402,3 +402,18 @@ test('LAYER_SOLID는 모든 층에 대해 막힘 여부를 알려준다', () => 
   assert.equal(M.LAYER_SOLID.floordeco, false);
   for (const l of ['walls', 'walldeco', 'objects']) assert.equal(M.LAYER_SOLID[l], true, l);
 });
+
+test('isOccupied는 어느 층이든 블록이 덮고 있는 칸이면 true, 빈 칸과 맵 밖은 false', () => {
+  const m = newMap();
+  assert.equal(M.isOccupied(m, 5, 5), false);
+  M.placeBlock(m, 'walls', blk('panel', 1, 3), 5, 5);
+  assert.equal(M.isOccupied(m, 5, 5), true);
+  assert.equal(M.isOccupied(m, 5, 7), true, '여러 칸 블록의 아래 칸도 true');
+  assert.equal(M.isOccupied(m, 5, 8), false);
+  M.placeBlock(m, 'objects', blk('crate'), 9, 9);
+  assert.equal(M.isOccupied(m, 9, 9), true);
+  assert.equal(M.isOccupied(m, -1, 0), false);
+  assert.equal(M.isOccupied(m, 40, 0), false);
+  M.eraseTopAt(m, 9, 9);
+  assert.equal(M.isOccupied(m, 9, 9), false);
+});

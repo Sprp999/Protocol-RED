@@ -113,6 +113,14 @@
     return out;
   }
 
+  // 어느 층이든 블록이 덮고 있는 칸이면 true. 빈 칸(검은 칸)과 맵 밖은 false.
+  function isOccupied(map, x, y) {
+    if (!inBounds(map, x, y)) return false;
+    const i = y * map.width + x;
+    for (const layer of LAYERS) if (map._idx[layer].cells[i]) return true;
+    return false;
+  }
+
   function countPlacements(map) {
     return LAYERS.reduce((n, layer) => n + map.layers[layer].length, 0);
   }
@@ -315,6 +323,7 @@
     combinePatches,
     placementAt,
     placementsInRect,
+    isOccupied,
     revision,
     replaceWith,
     countPlacements,
