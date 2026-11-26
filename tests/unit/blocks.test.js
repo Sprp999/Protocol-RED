@@ -46,7 +46,8 @@ test('그림 파일이 있는 블록은 파일이 실제로 있고, 칸 수와 �
     assert.ok(fs.existsSync(full), `${b.id}: ${b.file} 파일이 없어요`);
     const buf = fs.readFileSync(full);
     assert.equal(buf.toString('latin1', 1, 4), 'PNG', `${b.id}: PNG 파일이 아니에요`);
-    const pw = buf.readUInt32BE(16), ph = buf.readUInt32BE(20);
+    // 애니메이션 시트는 프레임 한 장의 크기로 본다
+    const pw = buf.readUInt32BE(16) / (b.anim ? b.anim.cols : 1), ph = buf.readUInt32BE(20) / (b.anim ? b.anim.rows : 1);
     assert.ok(pw >= b.w * 64 && ph >= b.h * 64, `${b.id}: 그림이 한 칸 64픽셀보다 작아요 (${pw}x${ph})`);
     assert.ok(Math.abs(pw / b.w - ph / b.h) <= Math.max(pw / b.w, ph / b.h) * 0.01, `${b.id}: 그림 비율(${pw}x${ph})이 ${b.w}x${b.h}칸과 달라요`);
   }
@@ -150,4 +151,69 @@ test('시작 깃발은 에디터 전용이라 블록 목록(게임용)에는 없
   assert.equal(B.layerOf('start_flag'), 'start');
   const full = path.join(__dirname, '..', '..', flag.file);
   assert.ok(fs.existsSync(full), '깃발 그림 파일이 없어요');
+});
+
+// ---- 애니메이션 블록 (한 장에 프레임이 격자로 모인 그림) ----
+function recordingFactory() {
+  const made = [];
+  const make = (w, h) => {
+    const cv = { width: w, height: h, calls: [] };
+    cv.getContext = () => ({ drawImage: (...a) => cv.calls.push(a), imageSmoothingEnabled: true });
+    made.push(cv);
+    return cv;
+  };
+  return { make, made };
+}
+const ANIM_DEF = { id: 'anim_t', name: '시험 애니', layer: 'walldeco', category: '벽꾸미기', w: 1, h: 1, solid: false, color: '#112233',
+  file: 'x.png', anim: { frames: 16, cols: 4, rows: 4, fps: 16 } };
+function withAnim(fn) {
+  const saved = globalThis.PR.BLOCK_DEFS;
+  globalThis.PR.BLOCK_DEFS = [ANIM_DEF];
+  try { fn(); } finally { globalThis.PR.BLOCK_DEFS = saved; }
+}
+
+test('애니메이션 블록은 시트를 프레임 16장으로 잘라서 보관한다', () => withAnim(() => {
+  const { make } = recordingFactory();
+  const sheet = { width: 256, height: 256 };
+  B.setImage('anim_t', sheet, make);
+  assert.equal(B.frameCount('anim_t'), 16);
+  const f0 = B.imageFor('anim_t', 64, 0).src;
+  const f5 = B.imageFor('anim_t', 64, 5).src;
+  const f15 = B.imageFor('anim_t', 64, 15).src;
+  assert.notEqual(f0, f5);
+  assert.deepEqual(f0.calls[0], [sheet, 0, 0, 64, 64, 0, 0, 64, 64]);
+  assert.deepEqual(f5.calls[0], [sheet, 64, 64, 64, 64, 0, 0, 64, 64], '프레임 5는 둘째 줄 둘째 칸');
+  assert.deepEqual(f15.calls[0], [sheet, 192, 192, 64, 64, 0, 0, 64, 64]);
+  assert.equal(B.imageFor('anim_t', 64, 21).src, f5, '프레임 번호는 돌고 돈다');
+  assert.equal(f0.width, 64);
+}));
+
+test('frameAt은 시간(ms)과 초당 프레임으로 지금 보일 프레임 번호를 돌려준다', () => withAnim(() => {
+  assert.equal(B.frameAt('anim_t', 0), 0);
+  assert.equal(B.frameAt('anim_t', 62), 0);
+  assert.equal(B.frameAt('anim_t', 63), 1, '16fps → 62.5ms마다 한 장');
+  assert.equal(B.frameAt('anim_t', 1000), 0, '16장이 1초에 한 바퀴');
+  assert.equal(B.frameAt('anim_t', 1000 + 625), 10);
+  assert.equal(B.frameAt('없는블록', 500), 0);
+  assert.equal(B.animFpsOf('anim_t'), 16);
+  assert.equal(B.animFpsOf('없는블록'), 0);
+}));
+
+test('애니메이션이 없는 블록은 프레임이 한 장이다', () => withFixture(() => {
+  assert.equal(B.frameCount('f1'), 1);
+  assert.equal(B.frameAt('f1', 5000), 0);
+  assert.equal(B.animFpsOf('f1'), 0);
+}));
+
+test('환풍기는 벽꾸미기 층의 16프레임(4×4) 애니메이션 블록이고 시트 파일이 격자에 맞는다', () => {
+  const fan = real.find((b) => b.id === 'fan_1');
+  assert.ok(fan, 'fan_1 블록이 없어요');
+  assert.deepEqual([fan.layer, fan.category, fan.w, fan.h, fan.solid], ['walldeco', '벽꾸미기', 1, 1, false]);
+  assert.deepEqual([fan.anim.frames, fan.anim.cols, fan.anim.rows], [16, 4, 4]);
+  assert.ok(fan.anim.fps >= 1 && fan.anim.fps <= 60);
+  const buf = fs.readFileSync(path.join(__dirname, '..', '..', fan.file));
+  const pw = buf.readUInt32BE(16), ph = buf.readUInt32BE(20);
+  assert.ok(pw % fan.anim.cols === 0 && ph % fan.anim.rows === 0, '시트가 격자로 나누어떨어져요');
+  assert.equal(pw / fan.anim.cols, ph / fan.anim.rows, '프레임이 정사각형이에요');
+  assert.ok(pw / fan.anim.cols >= 64);
 });

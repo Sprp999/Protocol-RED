@@ -554,3 +554,40 @@ test('시작점 깃발 그림은 불러와져서 맵 위에 그려진다', async
   const size = await env.page.evaluate(() => window.PR.Blocks.levelsOf('start_flag')[0].w);
   assert.ok(size >= 64);
 });
+
+test('환풍기(16프레임 애니메이션)는 벽꾸미기 층에 있고, 맵 위에서 실제로 돌아간다', async () => {
+  await openEditor(env.page);
+  await env.page.waitForFunction(() => window.PR.Blocks.frameCount('fan_1') === 16);
+  await env.page.click('[data-layer=walldeco]');
+  const swatch = await env.page.evaluate(() => {
+    const c = document.querySelector('.palette-block[data-block-id="fan_1"] canvas');
+    return c ? { w: c.width, h: c.height } : null;
+  });
+  assert.deepEqual(swatch, { w: 64, h: 64 }, '목록에는 첫 프레임 한 장이 보인다');
+  await env.page.click('.palette-block[data-block-id="fan_1"]');
+  await clickCell(env.page, 5, 5);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walldeco.length), 1);
+  const p = await cellToScreen(env.page, 5, 5);
+  await env.page.mouse.move(5, 5); // 마우스를 치워서 미리보기가 가리지 않게
+  await env.page.waitForTimeout(200);
+  const clip = { x: p.x - 28, y: p.y - 28, width: 56, height: 56 };
+  const shots = [];
+  for (let i = 0; i < 4; i++) {
+    shots.push(await env.page.screenshot({ clip }));
+    await env.page.waitForTimeout(90);
+  }
+  const distinct = new Set(shots.map((b) => b.toString('base64'))).size;
+  assert.ok(distinct >= 3, `프레임이 계속 바뀌어야 해요 (서로 다른 화면 ${distinct}장)`);
+  assert.equal(await env.page.evaluate(() => window.__editor.getLastDraw().animated), 16);
+  assert.deepEqual(env.errors, []);
+});
+
+test('애니메이션이 화면에 없으면 쓸데없이 계속 다시 그리지 않는다', async () => {
+  await openEditor(env.page);
+  await env.page.waitForTimeout(300);
+  const c0 = await env.page.evaluate(() => window.__editor.getDrawCount());
+  await env.page.waitForTimeout(400);
+  const c1 = await env.page.evaluate(() => window.__editor.getDrawCount());
+  assert.equal(c1, c0, '움직이는 블록이 없으면 다시 그리지 않는다');
+  assert.equal(await env.page.evaluate(() => window.__editor.getLastDraw().animated), 0);
+});

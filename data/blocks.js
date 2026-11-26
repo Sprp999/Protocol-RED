@@ -8,6 +8,7 @@
     { id: "panel_1", name: "금속 패널 벽", layer: "walls", category: "벽", w: 1, h: 3, solid: true, color: "#c9ced5", file: "assets/blocks/panel_1.png" },
     { id: "panel_2", name: "장식 벽 패널", layer: "walls", category: "벽", w: 1, h: 3, solid: true, color: "#d4d7df", file: "assets/blocks/panel_2.png" },
     { id: "wall_top_1", name: "벽 윗면(천장)", layer: "walls", category: "벽", w: 1, h: 1, solid: true, color: "#d3d7df", file: "assets/blocks/wall_top_1.png" },
+    { id: "fan_1", name: "환풍기", layer: "walldeco", category: "벽꾸미기", w: 1, h: 1, solid: false, color: "#9ea8b5", file: "assets/blocks/fan_1.png", anim: { frames: 16, cols: 4, rows: 4, fps: 16 } },
   ];
   if (typeof module !== 'undefined') module.exports = PR.BLOCK_DEFS;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

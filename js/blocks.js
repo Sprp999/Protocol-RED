@@ -64,20 +64,52 @@
     c.height = h;
     return c;
   }
-  function setImage(id, img) {
-    const canMake = typeof document !== 'undefined' && document.createElement;
-    images.set(id, buildLevels(img, canMake ? browserCanvas : null));
+  // 등록한 그림. 애니메이션 블록은 시트를 프레임 한 장씩 잘라서 프레임마다 단계별로 줄인 그림(levels)을 가진다.
+  // images: 블록 id → { frames: [levels, levels, ...] }  (일반 블록은 프레임이 한 장)
+  function setImage(id, img, factory) {
+    const make = factory || (typeof document !== 'undefined' && document.createElement ? browserCanvas : null);
+    const def = get(id);
+    const anim = def && def.anim;
+    if (anim && make) {
+      const sw = img.naturalWidth || img.width, sh = img.naturalHeight || img.height;
+      const fw = Math.floor(sw / anim.cols), fh = Math.floor(sh / anim.rows);
+      const frames = [];
+      for (let k = 0; k < anim.frames; k++) {
+        const cv = make(fw, fh);
+        cv.getContext('2d').drawImage(img, (k % anim.cols) * fw, Math.floor(k / anim.cols) * fh, fw, fh, 0, 0, fw, fh);
+        frames.push(buildLevels(cv, make));
+      }
+      images.set(id, { frames });
+      return;
+    }
+    images.set(id, { frames: [buildLevels(img, make)] });
   }
   function image(id) {
-    const levels = images.get(id);
-    return levels ? levels[0].src : null;
+    const e = images.get(id);
+    return e ? e.frames[0][0].src : null;
   }
-  function imageFor(id, targetW) {
-    const levels = images.get(id);
-    return levels ? pickLevel(levels, targetW) : null;
+  function imageFor(id, targetW, frame = 0) {
+    const e = images.get(id);
+    if (!e) return null;
+    return pickLevel(e.frames[((frame % e.frames.length) + e.frames.length) % e.frames.length], targetW);
   }
   function levelsOf(id) {
-    return images.get(id) || [];
+    const e = images.get(id);
+    return e ? e.frames[0] : [];
+  }
+  function frameCount(id) {
+    const def = get(id);
+    return def && def.anim ? def.anim.frames : 1;
+  }
+  function animFpsOf(id) {
+    const def = get(id);
+    return def && def.anim ? def.anim.fps : 0;
+  }
+  // 지금 시각(ms)에 보여줄 프레임 번호. 시간이 같으면 언제나 같은 프레임이다.
+  function frameAt(id, timeMs) {
+    const def = get(id);
+    if (!def || !def.anim) return 0;
+    return Math.floor((timeMs * def.anim.fps) / 1000) % def.anim.frames;
   }
   // 그림 파일이 있는 블록의 그림을 불러온다. 하나 불러올 때마다 onChange가 불린다.
   function loadImages(onChange) {
@@ -92,6 +124,6 @@
     }
   }
 
-  PR.Blocks = { all, get, sizeOf, layerOf, byLayer, categories, image, imageFor, levelsOf, setImage, buildLevels, pickLevel, loadImages };
+  PR.Blocks = { all, get, sizeOf, layerOf, byLayer, categories, image, imageFor, levelsOf, frameCount, animFpsOf, frameAt, setImage, buildLevels, pickLevel, loadImages };
   if (typeof module !== 'undefined') module.exports = PR.Blocks;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

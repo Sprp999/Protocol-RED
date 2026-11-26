@@ -20,6 +20,10 @@
     ctx.fillText(text, (x0 + x1) / 2, (y0 + y1) / 2);
   }
 
+  // 이번에 그린 것 중 가장 빠른 애니메이션의 초당 프레임 (0이면 움직이는 게 없다)
+  let animFps = 0;
+  let clock = 0;
+
   function drawPlacement(ctx, p, view, cellPx, alpha) {
     const B = root.PR.Blocks;
     const x0 = Math.round(view.x + p.x * cellPx);
@@ -32,7 +36,9 @@
       fillCell(ctx, x0, y0, x1, y1, MAGENTA);
       label(ctx, '?', x0, y0, x1, y1, '#220022');
     } else {
-      const level = B.imageFor(p.b, x1 - x0);
+      const fps = B.animFpsOf(p.b);
+      const level = B.imageFor(p.b, x1 - x0, fps ? B.frameAt(p.b, clock) : 0);
+      if (fps && level && cellPx >= 6) animFps = Math.max(animFps, fps);
       if (cellPx < 6 || !level) {
         fillCell(ctx, x0, y0, x1, y1, def.color);
         if (!level && cellPx >= 6) label(ctx, def.name.charAt(0), x0, y0, x1, y1, 'rgba(255,255,255,0.7)');
@@ -99,6 +105,8 @@
 
   function drawMap(ctx, map, view, opts) {
     const { viewW, viewH, showGrid, ghost, rect, markers } = opts;
+    animFps = 0;
+    clock = opts.time !== undefined ? opts.time : Date.now();
     const VM = root.PR.ViewMath;
     const MM = root.PR.MapModel;
     const cellPx = TILE * view.scale;
@@ -175,7 +183,7 @@
       ctx.lineWidth = 2;
       ctx.strokeRect(rx0 + 1, ry0 + 1, rx1 - rx0 - 2, ry1 - ry0 - 2);
     }
-    return { drawn };
+    return { drawn, animated: animFps };
   }
 
   // 맵 목록의 작은 그림: 맵을 만들지 않고 저장된 데이터(줄 단위)에서 바로 그린다

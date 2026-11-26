@@ -254,3 +254,44 @@ test('아주 작게 볼 때도 시작점은 찾을 수 있게 작은 빨간 점�
   R.drawMap(without.ctx, m, { scale: 0.02, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
   assert.equal(withMarker.calls.fillRect, without.calls.fillRect + 1);
 }));
+
+// ---- 애니메이션 블록 그리기 ----
+test('애니메이션 블록은 시간에 맞는 프레임을 그리고, 반환값에 초당 프레임을 알려준다', () => {
+  const saved = globalThis.PR.BLOCK_DEFS;
+  globalThis.PR.BLOCK_DEFS = [{ id: 'fan_t', name: 'f', layer: 'walldeco', category: 'x', w: 1, h: 1, solid: false, color: '#123456',
+    file: 'x.png', anim: { frames: 16, cols: 4, rows: 4, fps: 16 } }];
+  try {
+    const made = [];
+    const make = (w, h) => {
+      const cv = { width: w, height: h, tag: 'c' + made.length, getContext: () => ({ drawImage() {}, imageSmoothingEnabled: true }) };
+      made.push(cv);
+      return cv;
+    };
+    B.setImage('fan_t', { width: 256, height: 256 }, make);
+    const m = M.createMap({ id: 'a', name: 'a', width: 10, height: 10 });
+    M.placeBlock(m, 'walldeco', { id: 'fan_t', w: 1, h: 1 }, 2, 2);
+    const view = { scale: 1, x: 0, y: 0 };
+    const at = (time) => {
+      const { ctx, drawn } = imageCtx();
+      const res = R.drawMap(ctx, m, view, { viewW: 800, viewH: 600, showGrid: false, time });
+      return { src: drawn.map((d) => d.img), res };
+    };
+    const f0 = B.imageFor('fan_t', 64, 0).src;
+    const f3 = B.imageFor('fan_t', 64, 3).src;
+    const a = at(0);
+    assert.equal(a.src[0], f0);
+    assert.equal(a.res.animated, 16);
+    assert.equal(at(Math.ceil(3 * 62.5)).src[0], f3, '3프레임 뒤에는 프레임 3');
+    assert.equal(at(1000).src[0], f0, '1초 뒤에는 한 바퀴 돌아 처음 프레임');
+  } finally {
+    globalThis.PR.BLOCK_DEFS = saved;
+  }
+});
+
+test('애니메이션이 없는 맵은 animated 가 0이라서 다시 그릴 필요가 없다', () => {
+  const m = M.createMap({ id: 'a', name: 'a', width: 10, height: 10 });
+  M.placeBlock(m, 'floor', { id: 'floor_light_1', w: 1, h: 1 }, 1, 1);
+  const { ctx } = imageCtx();
+  const res = R.drawMap(ctx, m, { scale: 1, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
+  assert.equal(res.animated, 0);
+});

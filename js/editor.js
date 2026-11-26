@@ -56,7 +56,16 @@
     cssW: 0,
     cssH: 0,
   };
-  window.__editor = { getView: () => state.view, getMap: () => state.map, getSelection: () => state.rect };
+  let lastDraw = { drawn: 0, animated: 0 };
+  let drawCount = 0;
+  let animTimer = 0;
+  window.__editor = {
+    getView: () => state.view,
+    getMap: () => state.map,
+    getSelection: () => state.rect,
+    getLastDraw: () => lastDraw,
+    getDrawCount: () => drawCount,
+  };
   $('map-title').textContent = map.name;
   $('btn-grid').classList.toggle('active', state.showGrid);
   document.title = map.name + ' — Protocol-RED 맵 편집';
@@ -80,7 +89,11 @@
       const { x, y } = state.hover;
       ghost = { block, x, y, valid: x >= 0 && y >= 0 && x + block.w <= map.width && y + block.h <= map.height };
     }
-    PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost, rect: state.rect, markers: true });
+    lastDraw = PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost, rect: state.rect, markers: true });
+    drawCount++;
+    // 화면에 움직이는 블록이 있을 때만 그 속도에 맞춰 계속 다시 그린다
+    clearTimeout(animTimer);
+    if (lastDraw.animated) animTimer = setTimeout(requestDraw, Math.max(16, 1000 / lastDraw.animated));
     $('zoom-label').textContent = Math.round(state.view.scale * 100) + '%';
   }
   function resizeCanvas() {
@@ -193,7 +206,22 @@
       btn.title = b.name + ' (' + b.w + '×' + b.h + '칸)';
       const sw = document.createElement('div');
       sw.className = 'swatch';
-      if (b.file) {
+      if (b.anim) {
+        // 애니메이션 시트 전체가 아니라 첫 프레임 한 장만 보여준다
+        const level = PR.Blocks.imageFor(b.id, 64, 0);
+        const cv = document.createElement('canvas');
+        cv.width = 64;
+        cv.height = 64;
+        if (level) {
+          const g = cv.getContext('2d');
+          g.imageSmoothingEnabled = true;
+          g.imageSmoothingQuality = 'high';
+          g.drawImage(level.src, 0, 0, level.w, level.h, 0, 0, 64, 64);
+        } else {
+          sw.style.background = b.color;
+        }
+        sw.appendChild(cv);
+      } else if (b.file) {
         const img = document.createElement('img');
         img.src = b.file;
         img.alt = b.name;

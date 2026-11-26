@@ -34,6 +34,69 @@ function checkImage(png, cell = 64, expected = null) {
   return warnings;
 }
 
+// 애니메이션 시트(프레임이 격자로 모인 그림)를 검사한다. 경고 목록과 프레임 사이 차이(stats)를 돌려준다.
+// expected: { cols, rows, size: {w, h} (프레임이 차지하는 칸 수) }
+function checkAnimSheet(png, { cols, rows, size }, cell = 64) {
+  const warnings = [];
+  const { width, height, data } = png;
+  if (width % cols !== 0 || height % rows !== 0) {
+    warnings.push(`시트 크기(${width}×${height})가 ${cols}×${rows} 격자로 나누어떨어지지 않아요.`);
+    return { warnings, stats: { consecutive: [], mean: 0 } };
+  }
+  const fw = width / cols, fh = height / rows;
+  if (size) {
+    if (Math.abs(fw / size.w - fh / size.h) > Math.max(fw / size.w, fh / size.h) * 0.01) {
+      warnings.push(`프레임 한 장(${fw}×${fh})의 비율이 ${size.w}×${size.h}칸과 맞지 않아요.`);
+    }
+    if (fw / size.w < cell || fh / size.h < cell) {
+      warnings.push(`프레임이 작아요(${fw}×${fh}). 한 칸에 ${cell}픽셀 이상이면 확대해도 선명해요.`);
+    }
+  }
+  const frames = cols * rows;
+  const pix = (k, x, y) => {
+    const gx = (k % cols) * fw + x, gy = Math.floor(k / cols) * fh + y;
+    return (gy * width + gx) * 4;
+  };
+  // 프레임 사이 평균 차이 (마지막 → 처음 포함)
+  const consecutive = [];
+  for (let k = 0; k < frames; k++) {
+    const n = (k + 1) % frames;
+    let sum = 0, cnt = 0;
+    for (let y = 0; y < fh; y += 2) {
+      for (let x = 0; x < fw; x += 2) {
+        const a = pix(k, x, y), b = pix(n, x, y);
+        sum += Math.abs(data[a] - data[b]) + Math.abs(data[a + 1] - data[b + 1]) + Math.abs(data[a + 2] - data[b + 2]) + Math.abs(data[a + 3] - data[b + 3]) / 2;
+        cnt++;
+      }
+    }
+    consecutive.push(sum / cnt / 3);
+  }
+  const mean = consecutive.reduce((s, v) => s + v, 0) / consecutive.length;
+  const dup = consecutive.map((v, i) => (v < 0.05 ? i : -1)).filter((i) => i >= 0 && i < frames - 1);
+  if (dup.length) warnings.push(`프레임 ${dup.map((i) => i + 1).join(', ')}번이 다음 프레임과 같은 그림이에요. (움직임이 멈칫해요)`);
+  const wrap = consecutive[frames - 1];
+  const others = consecutive.slice(0, frames - 1);
+  const othersMax = Math.max(...others);
+  if (othersMax > 0 && wrap > othersMax * 1.5) {
+    warnings.push('마지막 프레임에서 처음으로 돌아올 때 그림이 크게 튀어요. (반복이 매끄럽지 않아요)');
+  }
+  // 격자: 프레임과 프레임 사이 경계의 양쪽 한 줄이 모두 투명하면 격자가 분명하다
+  let gapless = false;
+  const clearLine = (pts) => pts.filter(([x, y]) => data[(y * width + x) * 4 + 3] <= 16).length / pts.length >= 0.9;
+  for (let c = 1; c < cols && !gapless; c++) {
+    const bx = c * fw;
+    const ys = Array.from({ length: height }, (_, y) => y);
+    if (!(clearLine(ys.map((y) => [bx - 1, y])) && clearLine(ys.map((y) => [bx, y])))) gapless = true;
+  }
+  for (let r = 1; r < rows && !gapless; r++) {
+    const by = r * fh;
+    const xs = Array.from({ length: width }, (_, x) => x);
+    if (!(clearLine(xs.map((x) => [x, by - 1])) && clearLine(xs.map((x) => [x, by])))) gapless = true;
+  }
+  if (gapless) warnings.push('프레임 사이에 투명한 간격이 없어요. 프레임 경계가 분명한지(그림이 옆 칸에 번지지 않는지) 확인해 주세요.');
+  return { warnings, stats: { consecutive, mean } };
+}
+
 function averageColor(png) {
   let r = 0, g = 0, b = 0, n = 0;
   const { data } = png;
@@ -72,13 +135,15 @@ function wholeEntry(png, cell, info) {
     solid: info.solid,
     color: averageColor(png).color,
     file: info.file,
+    ...(info.anim ? { anim: { frames: info.anim.cols * info.anim.rows, cols: info.anim.cols, rows: info.anim.rows, fps: info.anim.fps } } : {}),
   };
 }
 
 function formatEntry(e) {
   const q = (s) => JSON.stringify(s);
+  const anim = e.anim ? `, anim: { frames: ${e.anim.frames}, cols: ${e.anim.cols}, rows: ${e.anim.rows}, fps: ${e.anim.fps} }` : '';
   return `    { id: ${q(e.id)}, name: ${q(e.name)}, layer: ${q(e.layer)}, category: ${q(e.category)}, ` +
-    `w: ${e.w}, h: ${e.h}, solid: ${e.solid}, color: ${q(e.color)}, file: ${q(e.file)} },`;
+    `w: ${e.w}, h: ${e.h}, solid: ${e.solid}, color: ${q(e.color)}, file: ${q(e.file)}${anim} },`;
 }
 
 function printUsage() {
@@ -92,6 +157,8 @@ function printUsage() {
     '  --solid true|false   막힘 여부 (기본: 물건은 true, 바닥은 false)',
     '  --whole              큰 구조물 한 장을 자르지 않고 원본 크기 그대로 등록',
     '  --size 1x2           (--whole과 함께) 차지하는 칸 수 가로x세로. 안 주면 그림 크기÷64',
+    '  --anim 4x4           (--whole과 함께) 프레임이 가로x세로 격자로 모인 애니메이션 시트. 프레임 한 장이 --size 칸',
+    '  --fps 16             (--anim과 함께) 초당 프레임 수(기본 12)',
     '  --out assets/blocks  저장 폴더',
   ].join('\n'));
 }
@@ -120,7 +187,16 @@ function main(argv) {
   const png = PNG.sync.read(fs.readFileSync(opts.file));
   const sizeMatch = opts.size && /^(\d+)x(\d+)$/.exec(opts.size);
   const size = sizeMatch ? { w: Number(sizeMatch[1]), h: Number(sizeMatch[2]) } : null;
-  const warnings = checkImage(png, opts.cell, opts.whole ? size : null);
+  const animMatch = opts.anim && /^(\d+)x(\d+)$/.exec(opts.anim);
+  const anim = animMatch ? { cols: Number(animMatch[1]), rows: Number(animMatch[2]), fps: Number(opts.fps) || 12 } : null;
+  let warnings;
+  if (anim) {
+    const res = checkAnimSheet(png, { cols: anim.cols, rows: anim.rows, size: size || { w: 1, h: 1 } }, opts.cell);
+    warnings = res.warnings;
+    console.log(`프레임 사이 평균 차이(마지막→처음 포함): ${res.stats.consecutive.map((v) => v.toFixed(1)).join(' ')}`);
+  } else {
+    warnings = checkImage(png, opts.cell, opts.whole ? size : null);
+  }
   for (const w of warnings) console.log('⚠ ' + w);
   const solid = opts.solid === undefined ? opts.layer === 'objects' : opts.solid === 'true';
   const category = opts.category || (opts.layer === 'floor' ? '바닥' : '물건');
@@ -131,7 +207,7 @@ function main(argv) {
   if (opts.whole) {
     const id = opts.prefix;
     fs.writeFileSync(path.join(opts.out, id + '.png'), PNG.sync.write(png));
-    entries.push(wholeEntry(png, opts.cell, { id, name: names[0] || id, layer: opts.layer, category, solid, file: toFile(id), size }));
+    entries.push(wholeEntry(png, opts.cell, { id, name: names[0] || id, layer: opts.layer, category, solid, file: toFile(id), size, anim }));
   } else {
     let n = 0;
     for (const t of sliceSheet(png, opts.cell)) {
@@ -146,5 +222,5 @@ function main(argv) {
   for (const e of entries) console.log(formatEntry(e));
 }
 
-module.exports = { checkImage, sliceSheet, wholeEntry, averageColor, formatEntry };
+module.exports = { checkImage, checkAnimSheet, sliceSheet, wholeEntry, averageColor, formatEntry };
 if (require.main === module) main(process.argv.slice(2));
