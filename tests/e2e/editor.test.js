@@ -426,3 +426,23 @@ test('끌어서 지울 때 두 칸짜리 물건을 지운 뒤 그 아래 벽까�
   await env.page.keyboard.press('Control+z');
   assert.equal(await count(env.page), 3, '끌어서 지운 것은 되돌리기 한 번에 복구');
 });
+
+test('장식 벽 패널(가로 1칸 × 세로 3칸)은 벽 층의 막히는 블록이고 원본 크기 그대로 쓴다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'panel_2');
+  const img = await env.page.evaluate(() => {
+    const i = document.querySelector('.palette-block[data-block-id="panel_2"] img');
+    return i ? { w: i.naturalWidth, h: i.naturalHeight } : null;
+  });
+  assert.deepEqual(img, { w: 667, h: 2000 }, '원본 그림 그대로 쓴다');
+  const def = await env.page.evaluate(() => window.PR.Blocks.get('panel_2'));
+  assert.deepEqual([def.layer, def.category, def.w, def.h, def.solid], ['walls', '벽', 1, 3, true]);
+  await clickCell(env.page, 8, 28);
+  assert.equal(await count(env.page), 0, '아래 두 칸이 맵 밖이라 놓이지 않는다');
+  await dragCells(env.page, 2, 10, 5, 10);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().layers.walls.length), 4);
+  await pick(env.page, 'capsule_1');
+  await clickCell(env.page, 3, 11);
+  assert.equal(await count(env.page), 5, '벽 앞에 물건을 놓아도 벽이 지워지지 않는다');
+  assert.deepEqual(env.errors, []);
+});

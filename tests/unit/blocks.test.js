@@ -106,7 +106,7 @@ test('setImage로 등록한 그림은 image가 원본을, imageFor가 크기에 
 });
 
 // 옆으로 이어 놓는 벽 블록은 그림이 칸에 꽉 차서 틈이 없어야 한다
-for (const id of ['panel_1', 'wall_top_1']) {
+for (const id of ['panel_1', 'panel_2', 'wall_top_1']) {
   test(`${id}: 그림이 칸에 꽉 차서 옆으로 이어 놓아도 틈이 없다`, () => {
     const { PNG } = require('pngjs');
     const b = real.find((x) => x.id === id);
