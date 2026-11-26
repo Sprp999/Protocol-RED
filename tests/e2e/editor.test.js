@@ -304,7 +304,7 @@ test('금속 패널 벽(가로 1칸 × 세로 3칸)은 세 칸을 차지하고 �
 test('벽 앞에 물건을 놓으면 벽이 지워지지 않고 겹쳐 보인다', async () => {
   await openEditor(env.page);
   const layers = await env.page.locator('[data-layer]').evaluateAll((els) => els.map((e) => e.dataset.layer));
-  assert.deepEqual(layers, ['floor', 'floordeco', 'walls', 'walldeco', 'objects']);
+  assert.deepEqual(layers, ['floor', 'floordeco', 'walls', 'walldeco', 'objects', 'start']);
   await pick(env.page, 'panel_1');
   await clickCell(env.page, 5, 5);
   assert.equal(await count(env.page), 1);
@@ -447,10 +447,10 @@ test('장식 벽 패널(가로 1칸 × 세로 3칸)은 벽 층의 막히는 블�
   assert.deepEqual(env.errors, []);
 });
 
-test('층 버튼은 바닥·바닥꾸미기·벽·벽꾸미기·물건 순서의 이름표로 보인다', async () => {
+test('층 버튼은 바닥·바닥꾸미기·벽·벽꾸미기·물건·시작점 순서의 이름표로 보인다', async () => {
   await openEditor(env.page);
   const labels = await env.page.locator('[data-layer]').evaluateAll((els) => els.map((e) => e.textContent.trim()));
-  assert.deepEqual(labels, ['바닥', '바닥꾸미기', '벽', '벽꾸미기', '물건']);
+  assert.deepEqual(labels, ['바닥', '바닥꾸미기', '벽', '벽꾸미기', '물건', '시작점']);
   await env.page.click('[data-layer=walldeco]');
   assert.ok(await env.page.locator('.palette-block[data-block-id="test_walldeco"]').count() === 1);
   assert.equal(await env.page.locator('.palette-block[data-block-id="test_wall"]').count(), 0);
@@ -503,4 +503,54 @@ test('꾸미기 층에 블록이 아직 없으면 안내 문구가 보이고, �
   } finally {
     await bare.browser.close();
   }
+});
+
+test('시작점 카테고리의 빨간 깃발을 놓으면 맵의 시작점이 되고, 하나뿐이라 다시 놓으면 옮겨진다', async () => {
+  await openEditor(env.page);
+  await env.page.click('[data-layer=start]');
+  assert.equal(await env.page.locator('.palette-tab[data-category="시작점"]').count(), 1);
+  assert.equal(await env.page.locator('.palette-block[data-block-id="start_flag"]').count(), 1);
+  await env.page.click('.palette-block[data-block-id="start_flag"]');
+  const start = () => env.page.evaluate(() => window.__editor.getMap().start);
+  assert.equal(await start(), null);
+  await clickCell(env.page, 6, 7);
+  assert.deepEqual(await start(), { x: 6, y: 7 });
+  await clickCell(env.page, 9, 2);
+  assert.deepEqual(await start(), { x: 9, y: 2 }, '하나뿐이라 옮겨진다');
+  assert.equal(await count(env.page), 0, '깃발은 블록 개수에 들어가지 않는다');
+  await env.page.keyboard.press('Control+z');
+  assert.deepEqual(await start(), { x: 6, y: 7 });
+  await env.page.waitForFunction(() => document.getElementById('save-status').textContent.includes('저장됨'));
+  await env.page.reload();
+  await env.page.waitForFunction(() => window.__editor && window.__editor.getMap());
+  assert.deepEqual(await start(), { x: 6, y: 7 }, '저장되어 새로고침해도 남는다');
+  assert.deepEqual(env.errors, []);
+});
+
+test('깃발은 바닥 위(블록 위)에도 놓을 수 있고, 지우개는 깃발을 맨 먼저 지운다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'floor_light_1');
+  await clickCell(env.page, 4, 4);
+  await pick(env.page, 'test_crate');
+  await clickCell(env.page, 4, 4);
+  await env.page.click('[data-layer=start]');
+  await env.page.click('.palette-block[data-block-id="start_flag"]');
+  await clickCell(env.page, 4, 4);
+  assert.deepEqual(await env.page.evaluate(() => window.__editor.getMap().start), { x: 4, y: 4 });
+  await env.page.click('[data-tool=erase]');
+  await clickCell(env.page, 4, 4);
+  assert.equal(await env.page.evaluate(() => window.__editor.getMap().start), null);
+  assert.equal(await count(env.page), 2, '깃발만 지워지고 아래 블록은 남는다');
+  await clickCell(env.page, 4, 4);
+  assert.equal(await count(env.page), 1, '다음에 누르면 물건이 지워진다');
+  await env.page.keyboard.press('Control+z');
+  await env.page.keyboard.press('Control+z');
+  assert.deepEqual(await env.page.evaluate(() => window.__editor.getMap().start), { x: 4, y: 4 }, '깃발도 되돌리기로 복구');
+});
+
+test('시작점 깃발 그림은 불러와져서 맵 위에 그려진다', async () => {
+  await openEditor(env.page);
+  await env.page.waitForFunction(() => window.PR.Blocks.levelsOf('start_flag').length >= 1);
+  const size = await env.page.evaluate(() => window.PR.Blocks.levelsOf('start_flag')[0].w);
+  assert.ok(size >= 64);
 });

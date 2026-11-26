@@ -186,6 +186,23 @@
     return { ops: [{ t: 'place', layer, removed, added: [] }] };
   }
 
+  // 시작점을 이 칸으로 옮긴다 (맵에 하나뿐). 바뀐 게 없거나 맵 밖이면 null.
+  function setStart(map, x, y) {
+    if (!inBounds(map, x, y)) return null;
+    if (map.start && map.start.x === x && map.start.y === y) return null;
+    const from = map.start ? { ...map.start } : null;
+    map.start = { x, y };
+    return { ops: [{ t: 'start', from, to: { x, y } }] };
+  }
+
+  // 이 칸에 시작점이 있을 때만 지운다
+  function eraseMarkerAt(map, x, y) {
+    if (!map.start || map.start.x !== x || map.start.y !== y) return null;
+    const from = { ...map.start };
+    map.start = null;
+    return { ops: [{ t: 'start', from, to: null }] };
+  }
+
   function toggleStart(map, x, y) {
     if (!inBounds(map, x, y)) return null;
     const from = map.start ? { ...map.start } : null;
@@ -286,6 +303,8 @@
     eraseTopAt,
     fillRect,
     eraseRect,
+    setStart,
+    eraseMarkerAt,
     toggleStart,
     toggleExit,
     applyPatch,

@@ -223,3 +223,34 @@ test('꾸미기 층도 썸네일에 그려진다', () => {
   R.drawThumbnailData({ width: 240, height: 160, getContext: () => c.ctx }, data);
   assert.ok(c.calls.fillRect >= 4, '배경 2번 + 꾸미기 2번 이상');
 });
+
+test('시작점 깃발은 에디터에서만 그리고(markers 켬), 플레이용 그리기에서는 보이지 않는다', () => {
+  const m = M.createMap({ id: 'f', name: 'f', width: 10, height: 10 });
+  M.setStart(m, 3, 3);
+  M.placeBlock(m, 'objects', { id: 'obj_img', w: 1, h: 1 }, 3, 3);
+  B.setImage('start_flag', { width: 256, height: 256, tag: 'flag' });
+  B.setImage('obj_img', { width: 64, height: 64, tag: 'obj' });
+  const saved = globalThis.PR.BLOCK_DEFS;
+  globalThis.PR.BLOCK_DEFS = [{ id: 'obj_img', name: 'o', layer: 'objects', category: 'x', w: 1, h: 1, solid: false, color: '#123456' }];
+  try {
+    const view = { scale: 1, x: 0, y: 0 };
+    const play = imageCtx();
+    R.drawMap(play.ctx, m, view, { viewW: 800, viewH: 600, showGrid: false });
+    assert.deepEqual(play.drawn.map((d) => d.img.tag), ['obj'], '플레이용에는 깃발이 없다');
+    const editor = imageCtx();
+    R.drawMap(editor.ctx, m, view, { viewW: 800, viewH: 600, showGrid: false, markers: true });
+    assert.deepEqual(editor.drawn.map((d) => d.img.tag), ['obj', 'flag'], '에디터에서는 맨 위에 깃발');
+  } finally {
+    globalThis.PR.BLOCK_DEFS = saved;
+  }
+});
+
+test('아주 작게 볼 때도 시작점은 찾을 수 있게 작은 빨간 점으로 표시한다 (에디터 전용)', () => withFakeDocument(() => {
+  const m = M.createMap({ id: 'f', name: 'f', width: 100, height: 100 });
+  M.setStart(m, 50, 50);
+  const withMarker = countingCtx();
+  R.drawMap(withMarker.ctx, m, { scale: 0.02, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false, markers: true });
+  const without = countingCtx();
+  R.drawMap(without.ctx, m, { scale: 0.02, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
+  assert.equal(withMarker.calls.fillRect, without.calls.fillRect + 1);
+}));

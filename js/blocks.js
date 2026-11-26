@@ -3,12 +3,17 @@
 
   const images = new Map();
   const defs = () => root.PR.BLOCK_DEFS || [];
+  // 에디터에서만 쓰는 표시. 게임용 블록 목록(data/blocks.js)에는 넣지 않고, 맵의 시작점(start) 값으로 저장된다.
+  const EDITOR_DEFS = [
+    { id: 'start_flag', name: '시작 깃발', layer: 'start', category: '시작점', w: 1, h: 1, solid: false, color: '#e5483c', file: 'assets/editor/start_flag.png' },
+  ];
+  const allDefs = () => defs().concat(EDITOR_DEFS);
 
   function all() {
     return defs();
   }
   function get(id) {
-    return defs().find((b) => b.id === id) || null;
+    return allDefs().find((b) => b.id === id) || null;
   }
   function sizeOf(id) {
     const b = get(id);
@@ -19,7 +24,7 @@
     return b ? b.layer : null;
   }
   function byLayer(layer) {
-    return defs().filter((b) => b.layer === layer);
+    return allDefs().filter((b) => b.layer === layer);
   }
   function categories(layer) {
     const out = [];
@@ -76,7 +81,7 @@
   }
   // 그림 파일이 있는 블록의 그림을 불러온다. 하나 불러올 때마다 onChange가 불린다.
   function loadImages(onChange) {
-    for (const b of defs()) {
+    for (const b of allDefs()) {
       if (!b.file || images.has(b.id)) continue;
       const img = new Image();
       img.onload = () => {

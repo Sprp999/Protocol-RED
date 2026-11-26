@@ -87,8 +87,18 @@
     return canvas;
   }
 
+  function drawStartFlag(ctx, start, view, cellPx) {
+    if (cellPx < 6) {
+      // 아주 작게 볼 때도 찾을 수 있게 6픽셀 빨간 점으로
+      const cx = view.x + (start.x + 0.5) * cellPx, cy = view.y + (start.y + 0.5) * cellPx;
+      fillCell(ctx, Math.round(cx - 3), Math.round(cy - 3), Math.round(cx + 3), Math.round(cy + 3), '#e5483c');
+      return;
+    }
+    drawPlacement(ctx, { b: 'start_flag', x: start.x, y: start.y, w: 1, h: 1 }, view, cellPx, 1);
+  }
+
   function drawMap(ctx, map, view, opts) {
-    const { viewW, viewH, showGrid, ghost, rect } = opts;
+    const { viewW, viewH, showGrid, ghost, rect, markers } = opts;
     const VM = root.PR.ViewMath;
     const MM = root.PR.MapModel;
     const cellPx = TILE * view.scale;
@@ -134,6 +144,9 @@
         ctx.stroke();
       }
     }
+
+    // 에디터에서만 보이는 시작점 깃발 (플레이용 그리기에서는 markers 를 켜지 않는다)
+    if (markers && map.start && r.x1 >= r.x0 && r.y1 >= r.y0) drawStartFlag(ctx, map.start, view, cellPx);
 
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 2;

@@ -138,3 +138,16 @@ test('byLayer는 벽 층도 따로 나눈다', () => withFixture(() => {
   assert.equal(B.layerOf('w1'), 'walls');
   globalThis.PR.BLOCK_DEFS = saved;
 }));
+
+test('시작 깃발은 에디터 전용이라 블록 목록(게임용)에는 없고, 시작점 카테고리로 따로 나온다', () => {
+  assert.ok(!real.some((b) => b.id === 'start_flag'), '게임용 블록 목록에 들어가면 안 돼요');
+  assert.ok(!B.all().some((b) => b.id === 'start_flag'));
+  const flag = B.get('start_flag');
+  assert.ok(flag);
+  assert.deepEqual([flag.layer, flag.category, flag.w, flag.h], ['start', '시작점', 1, 1]);
+  assert.deepEqual(B.byLayer('start').map((b) => b.id), ['start_flag']);
+  assert.deepEqual(B.categories('start'), ['시작점']);
+  assert.equal(B.layerOf('start_flag'), 'start');
+  const full = path.join(__dirname, '..', '..', flag.file);
+  assert.ok(fs.existsSync(full), '깃발 그림 파일이 없어요');
+});

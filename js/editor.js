@@ -80,7 +80,7 @@
       const { x, y } = state.hover;
       ghost = { block, x, y, valid: x >= 0 && y >= 0 && x + block.w <= map.width && y + block.h <= map.height };
     }
-    PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost, rect: state.rect });
+    PR.Render.drawMap(ctx, map, state.view, { viewW: state.cssW, viewH: state.cssH, showGrid: state.showGrid, ghost, rect: state.rect, markers: true });
     $('zoom-label').textContent = Math.round(state.view.scale * 100) + '%';
   }
   function resizeCanvas() {
@@ -224,10 +224,10 @@
   }
   // 층 버튼은 아래에서 위 순서(바닥 → 바닥꾸미기 → 벽 → 벽꾸미기 → 물건)로 만든다
   const layerRow = $('layer-buttons');
-  for (const layer of MM.LAYERS) {
+  for (const layer of [...MM.LAYERS, 'start']) {
     const btn = document.createElement('button');
     btn.dataset.layer = layer;
-    btn.textContent = MM.LAYER_LABELS[layer];
+    btn.textContent = MM.LAYER_LABELS[layer] || '시작점';
     layerRow.appendChild(btn);
   }
   for (const b of document.querySelectorAll('[data-layer]')) {
@@ -277,6 +277,7 @@
     if (state.tool === 'brush') {
       const b = state.blockId && PR.Blocks.get(state.blockId);
       if (!b) return null;
+      if (b.layer === 'start') return MM.setStart(map, cell.x, cell.y); // 시작 깃발: 맵에 하나뿐이라 옮겨진다
       return MM.placeBlock(map, b.layer, { id: b.id, w: b.w, h: b.h }, cell.x, cell.y);
     }
     if (state.tool === 'erase') {
@@ -284,8 +285,9 @@
       const st = state.stroke;
       const key = cell.y * map.width + cell.x;
       if (st && st.cleared.has(key)) return null;
-      const patch = MM.eraseTopAt(map, cell.x, cell.y);
-      if (patch && st) {
+      // 시작 깃발이 맨 위에 보이므로 깃발을 먼저 지운다
+      const patch = MM.eraseMarkerAt(map, cell.x, cell.y) || MM.eraseTopAt(map, cell.x, cell.y);
+      if (patch && st && patch.ops[0].removed) {
         for (const r of patch.ops[0].removed) {
           for (let yy = r.y; yy < r.y + r.h; yy++) for (let xx = r.x; xx < r.x + r.w; xx++) st.cleared.add(yy * map.width + xx);
         }
@@ -374,7 +376,8 @@
     state.rect = null;
     requestDraw();
     const b = state.blockId && PR.Blocks.get(state.blockId);
-    if (r && b) commitOne(MM.fillRect(map, b.layer, { id: b.id, w: b.w, h: b.h }, r.x0, r.y0, r.x1, r.y1));
+    if (r && b && b.layer === 'start') commitOne(MM.setStart(map, r.x1, r.y1)); // 깃발은 영역이 아니라 마지막 칸에 놓는다
+    else if (r && b) commitOne(MM.fillRect(map, b.layer, { id: b.id, w: b.w, h: b.h }, r.x0, r.y0, r.x1, r.y1));
   }
   canvas.addEventListener('pointerup', pointerEnd);
   canvas.addEventListener('pointercancel', pointerEnd);

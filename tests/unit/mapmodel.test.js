@@ -365,3 +365,33 @@ test('eraseTopAt은 다섯 층을 물건 → 벽꾸미기 → 벽 → 바닥꾸�
   assert.deepEqual(order, ['objects', 'walldeco', 'walls', 'floordeco', 'floor']);
   assert.equal(M.eraseTopAt(m, 2, 2), null);
 });
+
+test('setStart는 시작점을 놓거나 옮기고, 같은 자리나 맵 밖이면 null', () => {
+  const m = newMap();
+  const before = snap(m);
+  const p1 = M.setStart(m, 3, 4);
+  assert.deepEqual(m.start, { x: 3, y: 4 });
+  const p2 = M.setStart(m, 10, 11);
+  assert.deepEqual(m.start, { x: 10, y: 11 }, '하나뿐이라 옮겨진다');
+  assert.equal(M.setStart(m, 10, 11), null, '같은 자리는 바뀐 게 없다');
+  assert.equal(M.setStart(m, -1, 0), null);
+  assert.equal(M.setStart(m, 40, 0), null);
+  M.revertPatch(m, p2);
+  assert.deepEqual(m.start, { x: 3, y: 4 });
+  M.revertPatch(m, p1);
+  assert.equal(m.start, null);
+  assert.equal(snap(m), before);
+});
+
+test('eraseMarkerAt은 시작점이 있는 칸에서만 시작점을 지운다', () => {
+  const m = newMap();
+  assert.equal(M.eraseMarkerAt(m, 3, 4), null);
+  M.setStart(m, 3, 4);
+  assert.equal(M.eraseMarkerAt(m, 5, 5), null);
+  const p = M.eraseMarkerAt(m, 3, 4);
+  assert.equal(m.start, null);
+  M.revertPatch(m, p);
+  assert.deepEqual(m.start, { x: 3, y: 4 });
+  M.applyPatch(m, p);
+  assert.equal(m.start, null);
+});
