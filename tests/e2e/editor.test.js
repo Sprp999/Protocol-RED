@@ -304,7 +304,7 @@ test('금속 패널 벽(가로 1칸 × 세로 3칸)은 세 칸을 차지하고 �
 test('벽 앞에 물건을 놓으면 벽이 지워지지 않고 겹쳐 보인다', async () => {
   await openEditor(env.page);
   const layers = await env.page.locator('[data-layer]').evaluateAll((els) => els.map((e) => e.dataset.layer));
-  assert.deepEqual(layers, ['floor', 'walls', 'objects']);
+  assert.deepEqual(layers, ['floor', 'floordeco', 'walls', 'walldeco', 'objects']);
   await pick(env.page, 'panel_1');
   await clickCell(env.page, 5, 5);
   assert.equal(await count(env.page), 1);
@@ -445,4 +445,62 @@ test('장식 벽 패널(가로 1칸 × 세로 3칸)은 벽 층의 막히는 블�
   await clickCell(env.page, 3, 11);
   assert.equal(await count(env.page), 5, '벽 앞에 물건을 놓아도 벽이 지워지지 않는다');
   assert.deepEqual(env.errors, []);
+});
+
+test('층 버튼은 바닥·바닥꾸미기·벽·벽꾸미기·물건 순서의 이름표로 보인다', async () => {
+  await openEditor(env.page);
+  const labels = await env.page.locator('[data-layer]').evaluateAll((els) => els.map((e) => e.textContent.trim()));
+  assert.deepEqual(labels, ['바닥', '바닥꾸미기', '벽', '벽꾸미기', '물건']);
+  await env.page.click('[data-layer=walldeco]');
+  assert.ok(await env.page.locator('.palette-block[data-block-id="test_walldeco"]').count() === 1);
+  assert.equal(await env.page.locator('.palette-block[data-block-id="test_wall"]').count(), 0);
+  await env.page.click('[data-layer=floordeco]');
+  assert.ok(await env.page.locator('.palette-block[data-block-id="test_floordeco"]').count() === 1);
+  assert.equal(await env.page.locator('.palette-block[data-block-id="test_walldeco"]').count(), 0);
+});
+
+test('바닥 위에 바닥꾸미기를, 벽 위에 벽꾸미기를 붙여도 아래 블록이 남고 지우개가 차례로 지운다', async () => {
+  await openEditor(env.page);
+  await pick(env.page, 'floor_light_1');
+  await clickCell(env.page, 4, 4);
+  await pick(env.page, 'test_floordeco');
+  await clickCell(env.page, 4, 4);
+  await pick(env.page, 'test_wall');
+  await clickCell(env.page, 4, 4);
+  await pick(env.page, 'test_walldeco');
+  await clickCell(env.page, 4, 4);
+  await pick(env.page, 'test_crate');
+  await clickCell(env.page, 4, 4);
+  assert.equal(await count(env.page), 5, '다섯 층 모두 남아 있다');
+  const lens = () => env.page.evaluate(() => Object.fromEntries(Object.entries(window.__editor.getMap().layers).map(([k, v]) => [k, v.length])));
+  assert.deepEqual(await lens(), { floor: 1, floordeco: 1, walls: 1, walldeco: 1, objects: 1 });
+  await env.page.click('[data-tool=erase]');
+  const order = [];
+  for (let i = 0; i < 5; i++) {
+    const before = await lens();
+    await clickCell(env.page, 4, 4);
+    const after = await lens();
+    order.push(Object.keys(before).find((k) => before[k] !== after[k]));
+  }
+  assert.deepEqual(order, ['objects', 'walldeco', 'walls', 'floordeco', 'floor']);
+  assert.equal(await count(env.page), 0);
+  for (let i = 0; i < 5; i++) await env.page.keyboard.press('Control+z');
+  assert.equal(await count(env.page), 5);
+  assert.deepEqual(env.errors, []);
+});
+
+test('꾸미기 층에 블록이 아직 없으면 안내 문구가 보이고, 예전 저장 맵도 열린다', async () => {
+  const floorOnly = require('../../data/blocks.js').filter((b) => b.layer === 'floor');
+  const bare = await launch({ defs: floorOnly });
+  try {
+    bare.page.setDefaultTimeout(5000);
+    await openEditor(bare.page);
+    for (const layer of ['floordeco', 'walldeco']) {
+      await bare.page.click(`[data-layer=${layer}]`);
+      assert.equal(await bare.page.locator('#palette-empty').isVisible(), true);
+    }
+    assert.deepEqual(bare.errors, []);
+  } finally {
+    await bare.browser.close();
+  }
 });

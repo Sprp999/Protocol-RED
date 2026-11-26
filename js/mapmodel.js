@@ -1,7 +1,9 @@
 (function (root) {
   const PR = (root.PR = root.PR || {});
 
-  const LAYERS = ['floor', 'walls', 'objects']; // 아래에서 위 순서로 그려진다: 바닥 → 벽 → 물건
+  // 아래에서 위 순서로 그려진다: 바닥 → 바닥꾸미기 → 벽 → 벽꾸미기 → 물건
+  const LAYERS = ['floor', 'floordeco', 'walls', 'walldeco', 'objects'];
+  const LAYER_LABELS = { floor: '바닥', floordeco: '바닥꾸미기', walls: '벽', walldeco: '벽꾸미기', objects: '물건' };
   const MAX_SIZE = 1000;
 
   function checkSize(width, height) {
@@ -68,7 +70,7 @@
       width,
       height,
       tileSize: 64,
-      layers: { floor: [], walls: [], objects: [] },
+      layers: Object.fromEntries(LAYERS.map((l) => [l, []])),
       start: null,
       exits: [],
       nextUid: 1,
@@ -276,6 +278,7 @@
 
   PR.MapModel = {
     LAYERS,
+    LAYER_LABELS,
     MAX_SIZE,
     createMap,
     placeBlock,

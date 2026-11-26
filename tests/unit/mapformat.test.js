@@ -8,7 +8,7 @@ const sizeOf = (id) => sizes[id] || null;
 const blk = (id) => ({ id, ...sizes[id] });
 const cells = (map) => {
   const out = [];
-  for (const layer of ['floor', 'walls', 'objects']) {
+  for (const layer of M.LAYERS) {
     for (const p of map.layers[layer]) out.push(`${layer}:${p.b}@${p.x},${p.y}`);
   }
   return out.sort();
@@ -133,4 +133,35 @@ test('예전에 물건 층에 저장된 벽 블록은 읽을 때 벽 층으로 �
   assert.equal(M.placementAt(back, 'walls', 5, 6).b, 'panel');
   assert.equal(M.placementAt(back, 'objects', 5, 5), null);
   assert.equal(M.placementAt(back, 'objects', 10, 10).b, 'house');
+});
+
+test('바닥꾸미기·벽꾸미기 층도 저장했다가 그대로 읽힌다', () => {
+  const m = sampleMap();
+  M.placeBlock(m, 'floordeco', blk('grass'), 3, 3);
+  M.placeBlock(m, 'walldeco', blk('wall'), 20, 6);
+  const data = JSON.parse(JSON.stringify(F.serializeMap(m)));
+  assert.deepEqual(data.floordeco, [['grass', 3, 3, 1]]);
+  assert.deepEqual(data.walldeco, [['wall', 20, 6, 1]]);
+  const back = F.parseMap(data, sizeOf);
+  assert.equal(M.placementAt(back, 'floordeco', 3, 3).b, 'grass');
+  assert.equal(M.placementAt(back, 'walldeco', 20, 6).b, 'wall');
+  assert.deepEqual(cells(back), cells(m));
+});
+
+test('꾸미기 층이 없던 예전 파일도 읽히고, 꾸미기 층 정보가 배열이 아니면 거부된다', () => {
+  const data = JSON.parse(JSON.stringify(F.serializeMap(sampleMap())));
+  delete data.floordeco;
+  delete data.walldeco;
+  const back = F.parseMap(data, sizeOf);
+  assert.equal(back.layers.floordeco.length + back.layers.walldeco.length, 0);
+  assert.throws(() => F.parseMap({ ...data, walldeco: 5 }, sizeOf), F.MapFormatError);
+  assert.throws(() => F.parseMap({ ...data, floordeco: 'x' }, sizeOf), F.MapFormatError);
+});
+
+test('블록이 속한 꾸미기 층으로 옮겨서 읽는다', () => {
+  const data = JSON.parse(JSON.stringify(F.serializeMap(sampleMap())));
+  data.objects = [['wall', 5, 5, 1]];
+  const back = F.parseMap(data, sizeOf, (id) => (id === 'wall' ? 'walldeco' : null));
+  assert.equal(M.placementAt(back, 'walldeco', 5, 5).b, 'wall');
+  assert.equal(M.placementAt(back, 'objects', 5, 5), null);
 });

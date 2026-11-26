@@ -31,9 +31,8 @@
       width: map.width,
       height: map.height,
       tileSize: map.tileSize,
-      floor: serializeLayer(map.layers.floor),
-      walls: serializeLayer(map.layers.walls),
-      objects: serializeLayer(map.layers.objects),
+      ...Object.fromEntries(root.PR.MapModel.LAYERS.map((l) => [l, serializeLayer(map.layers[l])])),
+
       start: map.start ? { x: map.start.x, y: map.start.y } : null,
       exits: map.exits.map((e) => ({ x: e.x, y: e.y })),
     };
@@ -66,9 +65,11 @@
     } catch (e) {
       throw new MapFormatError('맵 크기가 올바르지 않아요. (1~' + MM.MAX_SIZE + ' 사이의 정수)');
     }
-    for (const [layer, label] of [['floor', '바닥'], ['walls', '벽'], ['objects', '물건']]) {
-      // 벽 층은 나중에 생겼으므로, 예전 파일에는 없어도 된다
-      const list = layer === 'walls' && data.walls === undefined ? [] : data[layer];
+    for (const layer of MM.LAYERS) {
+      const label = MM.LAYER_LABELS[layer];
+      // 바닥과 물건 층만 처음부터 있었고, 나머지 층은 나중에 생겼으므로 예전 파일에는 없어도 된다
+      const required = layer === 'floor' || layer === 'objects';
+      const list = !required && data[layer] === undefined ? [] : data[layer];
       if (!Array.isArray(list)) throw new MapFormatError(label + ' 층 정보가 없어요.');
       for (const entry of list) {
         if (!Array.isArray(entry) || entry.length !== 4 || typeof entry[0] !== 'string' ||

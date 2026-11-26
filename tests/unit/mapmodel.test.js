@@ -4,9 +4,7 @@ const M = require('../../js/mapmodel.js');
 
 const blk = (id, w = 1, h = 1) => ({ id, w, h });
 const snap = (map) => JSON.stringify({
-  floor: [...map.layers.floor].sort((a, b) => a.uid - b.uid),
-  walls: [...map.layers.walls].sort((a, b) => a.uid - b.uid),
-  objects: [...map.layers.objects].sort((a, b) => a.uid - b.uid),
+  layers: M.LAYERS.map((l) => [...map.layers[l]].sort((a, b) => a.uid - b.uid)),
   start: map.start,
   exits: map.exits,
 });
@@ -18,7 +16,7 @@ test('createMap은 두 층이 비어 있고 한 칸이 64인 맵을 만든다', 
   assert.equal(m.height, 30);
   assert.equal(m.tileSize, 64);
   assert.equal(m.version, 1);
-  assert.deepEqual(m.layers, { floor: [], walls: [], objects: [] });
+  assert.deepEqual(m.layers, { floor: [], floordeco: [], walls: [], walldeco: [], objects: [] });
   assert.equal(m.start, null);
   assert.deepEqual(m.exits, []);
 });
@@ -292,7 +290,7 @@ test('벽 층의 지우기·되돌리기·크기 변경이 다른 층과 똑같�
   assert.equal(M.countPlacements(M.resizeMap(m, 60, 40)), 1);
   M.revertPatch(m, p1);
   assert.equal(snap(m), before);
-  assert.deepEqual(M.LAYERS, ['floor', 'walls', 'objects']);
+  assert.deepEqual(M.LAYERS, ['floor', 'floordeco', 'walls', 'walldeco', 'objects']);
 });
 
 test('eraseTopAt은 보이는 맨 위 블록부터 지운다 (물건 → 벽 → 바닥)', () => {
@@ -324,4 +322,46 @@ test('eraseTopAt은 여러 칸 블록의 어느 칸을 눌러도 통째로 지�
   assert.equal(M.placementAt(m, 'walls', 7, 8).b, 'panel');
   assert.equal(M.eraseTopAt(m, -1, 0), null);
   assert.equal(M.eraseTopAt(m, 40, 0), null);
+});
+
+test('층 이름표는 아래에서 위 순서로 바닥·바닥꾸미기·벽·벽꾸미기·물건이다', () => {
+  assert.deepEqual(M.LAYERS.map((l) => M.LAYER_LABELS[l]), ['바닥', '바닥꾸미기', '벽', '벽꾸미기', '물건']);
+});
+
+test('바닥꾸미기는 바닥 위에, 벽꾸미기는 벽 위에 겹쳐 놓아도 아래 블록이 지워지지 않는다', () => {
+  const m = newMap();
+  M.placeBlock(m, 'floor', blk('g'), 4, 4);
+  const a = M.placeBlock(m, 'floordeco', blk('crack'), 4, 4);
+  M.placeBlock(m, 'walls', blk('panel', 1, 3), 8, 4);
+  const b = M.placeBlock(m, 'walldeco', blk('poster'), 8, 5);
+  assert.equal(a.ops[0].removed.length, 0);
+  assert.equal(b.ops[0].removed.length, 0);
+  assert.equal(M.placementAt(m, 'floor', 4, 4).b, 'g');
+  assert.equal(M.placementAt(m, 'floordeco', 4, 4).b, 'crack');
+  assert.equal(M.placementAt(m, 'walls', 8, 5).b, 'panel');
+  assert.equal(M.placementAt(m, 'walldeco', 8, 5).b, 'poster');
+  assert.equal(M.countPlacements(m), 4);
+});
+
+test('꾸미기 층도 같은 층 안에서는 겹치면 대체되고, 되돌리기와 크기 변경이 똑같이 동작한다', () => {
+  const m = newMap();
+  const before = snap(m);
+  const p1 = M.placeBlock(m, 'walldeco', blk('poster'), 39, 29);
+  const p2 = M.placeBlock(m, 'walldeco', blk('lamp'), 39, 29);
+  assert.equal(p2.ops[0].removed.length, 1);
+  assert.equal(M.countDroppedByResize(m, 20, 20), 1);
+  assert.equal(M.countPlacements(M.resizeMap(m, 60, 40)), 1);
+  M.revertPatch(m, p2);
+  assert.equal(M.placementAt(m, 'walldeco', 39, 29).b, 'poster');
+  M.revertPatch(m, p1);
+  assert.equal(snap(m), before);
+});
+
+test('eraseTopAt은 다섯 층을 물건 → 벽꾸미기 → 벽 → 바닥꾸미기 → 바닥 순서로 지운다', () => {
+  const m = newMap();
+  for (const layer of M.LAYERS) M.placeBlock(m, layer, blk('b_' + layer), 2, 2);
+  const order = [];
+  for (let i = 0; i < 5; i++) order.push(M.eraseTopAt(m, 2, 2).ops[0].layer);
+  assert.deepEqual(order, ['objects', 'walldeco', 'walls', 'floordeco', 'floor']);
+  assert.equal(M.eraseTopAt(m, 2, 2), null);
 });

@@ -222,6 +222,14 @@
     renderPalette();
     requestDraw();
   }
+  // 층 버튼은 아래에서 위 순서(바닥 → 바닥꾸미기 → 벽 → 벽꾸미기 → 물건)로 만든다
+  const layerRow = $('layer-buttons');
+  for (const layer of MM.LAYERS) {
+    const btn = document.createElement('button');
+    btn.dataset.layer = layer;
+    btn.textContent = MM.LAYER_LABELS[layer];
+    layerRow.appendChild(btn);
+  }
   for (const b of document.querySelectorAll('[data-layer]')) {
     b.onclick = () => {
       state.layer = b.dataset.layer;

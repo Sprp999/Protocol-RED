@@ -9,6 +9,8 @@ const TEST_BLOCKS = [
   { id: 'test_floor_dirt', name: '시험 흙 바닥', layer: 'floor', category: '바닥', w: 1, h: 1, solid: false, color: '#6b4a2b' },
   { id: 'test_wall', name: '시험 벽', layer: 'walls', category: '벽', w: 1, h: 1, solid: true, color: '#8a8a99' },
   { id: 'test_crate', name: '시험 상자', layer: 'objects', category: '물건', w: 1, h: 1, solid: true, color: '#a8742f' },
+  { id: 'test_floordeco', name: '시험 바닥꾸미기', layer: 'floordeco', category: '바닥꾸미기', w: 1, h: 1, solid: false, color: '#33aa66' },
+  { id: 'test_walldeco', name: '시험 벽꾸미기', layer: 'walldeco', category: '벽꾸미기', w: 1, h: 1, solid: false, color: '#aa3366' },
   { id: 'test_house', name: '시험 건물 3x2', layer: 'objects', category: '건물', w: 3, h: 2, solid: true, color: '#a33a3a' },
 ];
 
@@ -54,7 +56,7 @@ async function openEditor(page, { width = 40, height = 30 } = {}) {
 }
 const count = (page) => page.evaluate(() => {
   const m = window.__editor.getMap();
-  return m.layers.floor.length + m.layers.walls.length + m.layers.objects.length;
+  return Object.values(m.layers).reduce((n, list) => n + list.length, 0);
 });
 async function pick(page, blockId) {
   const def = await page.evaluate((id) => window.PR.Blocks.get(id), blockId);

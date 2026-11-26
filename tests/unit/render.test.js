@@ -195,3 +195,31 @@ test('벽 층도 한 장 그림(작게 볼 때)과 썸네일에 포함된다', (
     globalThis.PR.BLOCK_DEFS = saved;
   }
 }));
+
+test('다섯 층은 바닥 → 바닥꾸미기 → 벽 → 벽꾸미기 → 물건 순서로 그려진다', () => {
+  const layers = ['objects', 'walldeco', 'walls', 'floordeco', 'floor']; // 일부러 거꾸로 놓는다
+  const m = M.createMap({ id: 'o', name: 'o', width: 10, height: 10 });
+  const defs = [];
+  for (const layer of layers) {
+    const id = 'img_' + layer;
+    M.placeBlock(m, layer, { id, w: 1, h: 1 }, 3, 3);
+    B.setImage(id, { width: 64, height: 64, tag: layer });
+    defs.push({ id, name: id, layer, category: 'x', w: 1, h: 1, solid: false, color: '#123456' });
+  }
+  const saved = globalThis.PR.BLOCK_DEFS;
+  globalThis.PR.BLOCK_DEFS = defs;
+  try {
+    const { ctx, drawn } = imageCtx();
+    R.drawMap(ctx, m, { scale: 1, x: 0, y: 0 }, { viewW: 800, viewH: 600, showGrid: false });
+    assert.deepEqual(drawn.map((d) => d.img.tag), ['floor', 'floordeco', 'walls', 'walldeco', 'objects']);
+  } finally {
+    globalThis.PR.BLOCK_DEFS = saved;
+  }
+});
+
+test('꾸미기 층도 썸네일에 그려진다', () => {
+  const data = { version: 1, width: 100, height: 100, floor: [], floordeco: [['d1', 0, 0, 5]], walls: [], walldeco: [['d2', 0, 1, 5]], objects: [] };
+  const c = countingCtx();
+  R.drawThumbnailData({ width: 240, height: 160, getContext: () => c.ctx }, data);
+  assert.ok(c.calls.fillRect >= 4, '배경 2번 + 꾸미기 2번 이상');
+});

@@ -24,7 +24,7 @@ test('진짜 블록 목록: id는 유일하고 모든 항목이 올바른 크기
   for (const b of real) {
     assert.ok(Number.isInteger(b.w) && b.w >= 1, b.id);
     assert.ok(Number.isInteger(b.h) && b.h >= 1, b.id);
-    assert.ok(['floor', 'walls', 'objects'].includes(b.layer), b.id);
+    assert.ok(['floor', 'floordeco', 'walls', 'walldeco', 'objects'].includes(b.layer), b.id);
     assert.match(b.color, /^#[0-9a-fA-F]{6}$/, b.id);
     assert.equal(typeof b.solid, 'boolean', b.id);
     assert.ok(b.name && b.category, b.id);
