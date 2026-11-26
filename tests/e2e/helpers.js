@@ -10,7 +10,7 @@ const TEST_BLOCKS = [
   { id: 'test_wall', name: '시험 벽', layer: 'walls', category: '벽', w: 1, h: 1, solid: true, color: '#8a8a99' },
   { id: 'test_crate', name: '시험 상자', layer: 'objects', category: '물건', w: 1, h: 1, solid: true, color: '#a8742f' },
   { id: 'test_floordeco', name: '시험 바닥꾸미기', layer: 'floordeco', category: '바닥꾸미기', w: 1, h: 1, solid: false, color: '#33aa66' },
-  { id: 'test_walldeco', name: '시험 벽꾸미기', layer: 'walldeco', category: '벽꾸미기', w: 1, h: 1, solid: false, color: '#aa3366' },
+  { id: 'test_walldeco', name: '시험 벽꾸미기', layer: 'walldeco', category: '벽꾸미기', w: 1, h: 1, solid: true, color: '#aa3366' },
   { id: 'test_house', name: '시험 건물 3x2', layer: 'objects', category: '건물', w: 3, h: 2, solid: true, color: '#a33a3a' },
 ];
 

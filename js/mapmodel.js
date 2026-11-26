@@ -3,6 +3,8 @@
 
   // 아래에서 위 순서로 그려진다: 바닥 → 바닥꾸미기 → 벽 → 벽꾸미기 → 물건
   const LAYERS = ['floor', 'floordeco', 'walls', 'walldeco', 'objects'];
+  // 지나갈 수 있는지: 바닥·바닥꾸미기만 걸어다닐 수 있고, 벽·벽꾸미기·물건은 전부 막힌다 (게임에서 이 규칙을 그대로 쓴다)
+  const LAYER_SOLID = { floor: false, floordeco: false, walls: true, walldeco: true, objects: true };
   const LAYER_LABELS = { floor: '바닥', floordeco: '바닥꾸미기', walls: '벽', walldeco: '벽꾸미기', objects: '물건' };
   const MAX_SIZE = 1000;
 
@@ -296,6 +298,7 @@
   PR.MapModel = {
     LAYERS,
     LAYER_LABELS,
+    LAYER_SOLID,
     MAX_SIZE,
     createMap,
     placeBlock,

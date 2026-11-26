@@ -395,3 +395,10 @@ test('eraseMarkerAt은 시작점이 있는 칸에서만 시작점을 지운다',
   M.applyPatch(m, p);
   assert.equal(m.start, null);
 });
+
+test('LAYER_SOLID는 모든 층에 대해 막힘 여부를 알려준다', () => {
+  assert.deepEqual(Object.keys(M.LAYER_SOLID), M.LAYERS);
+  assert.equal(M.LAYER_SOLID.floor, false);
+  assert.equal(M.LAYER_SOLID.floordeco, false);
+  for (const l of ['walls', 'walldeco', 'objects']) assert.equal(M.LAYER_SOLID[l], true, l);
+});

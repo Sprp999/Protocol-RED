@@ -208,7 +208,7 @@ test('애니메이션이 없는 블록은 프레임이 한 장이다', () => wit
 test('환풍기는 벽꾸미기 층의 16프레임(4×4) 애니메이션 블록이고 시트 파일이 격자에 맞는다', () => {
   const fan = real.find((b) => b.id === 'fan_1');
   assert.ok(fan, 'fan_1 블록이 없어요');
-  assert.deepEqual([fan.layer, fan.category, fan.w, fan.h, fan.solid], ['walldeco', '벽꾸미기', 1, 1, false]);
+  assert.deepEqual([fan.layer, fan.category, fan.w, fan.h, fan.solid], ['walldeco', '벽꾸미기', 1, 1, true]);
   assert.deepEqual([fan.anim.frames, fan.anim.cols, fan.anim.rows], [16, 4, 4]);
   assert.ok(fan.anim.fps >= 1 && fan.anim.fps <= 60);
   const buf = fs.readFileSync(path.join(__dirname, '..', '..', fan.file));
@@ -216,4 +216,17 @@ test('환풍기는 벽꾸미기 층의 16프레임(4×4) 애니메이션 블록�
   assert.ok(pw % fan.anim.cols === 0 && ph % fan.anim.rows === 0, '시트가 격자로 나누어떨어져요');
   assert.equal(pw / fan.anim.cols, ph / fan.anim.rows, '프레임이 정사각형이에요');
   assert.ok(pw / fan.anim.cols >= 64);
+});
+
+// ---- 지나갈 수 있는지(solid)는 층이 정한다: 바닥·바닥꾸미기만 걸어다닐 수 있고, 벽·벽꾸미기·물건은 전부 막힌다 ----
+test('모든 블록의 막힘(solid)은 층의 규칙과 같다 (바닥 계열만 통과, 나머지는 막힘)', () => {
+  const MM = require('../../js/mapmodel.js');
+  assert.deepEqual(MM.LAYER_SOLID, { floor: false, floordeco: false, walls: true, walldeco: true, objects: true });
+  for (const b of real) {
+    assert.equal(b.solid, MM.LAYER_SOLID[b.layer], `${b.id}(${b.layer}): solid 가 ${MM.LAYER_SOLID[b.layer]}여야 해요`);
+  }
+});
+
+test('벽에 붙은 꾸미기(환풍기)는 통과할 수 없다', () => {
+  assert.equal(real.find((b) => b.id === 'fan_1').solid, true);
 });

@@ -131,3 +131,9 @@ test('wholeEntry는 애니메이션 정보(프레임 수·격자·초당 프레�
   assert.deepEqual(entry.anim, { frames: 16, cols: 4, rows: 4, fps: 16 });
   assert.deepEqual([entry.w, entry.h], [1, 1]);
 });
+
+test('defaultSolid는 층 규칙대로 바닥·바닥꾸미기만 통과, 나머지는 막힘으로 정한다', () => {
+  assert.equal(T.defaultSolid('floor'), false);
+  assert.equal(T.defaultSolid('floordeco'), false);
+  for (const l of ['walls', 'walldeco', 'objects']) assert.equal(T.defaultSolid(l), true, l);
+});

@@ -97,6 +97,11 @@ function checkAnimSheet(png, { cols, rows, size }, cell = 64) {
   return { warnings, stats: { consecutive, mean } };
 }
 
+// 층 규칙: 바닥·바닥꾸미기만 걸어다닐 수 있고, 벽·벽꾸미기·물건은 전부 막힌다
+function defaultSolid(layer) {
+  return layer !== 'floor' && layer !== 'floordeco';
+}
+
 function averageColor(png) {
   let r = 0, g = 0, b = 0, n = 0;
   const { data } = png;
@@ -154,7 +159,7 @@ function printUsage() {
     '  --names "벽,벽 모서리"  블록 이름(순서대로, 빈 칸은 건너뜀)',
     '  --layer objects      floor(바닥) 또는 objects(물건)',
     '  --category 벽         팔레트 탭 이름',
-    '  --solid true|false   막힘 여부 (기본: 물건은 true, 바닥은 false)',
+    '  --solid true|false   막힘 여부 (기본: 바닥·바닥꾸미기는 false, 벽·벽꾸미기·물건은 true)',
     '  --whole              큰 구조물 한 장을 자르지 않고 원본 크기 그대로 등록',
     '  --size 1x2           (--whole과 함께) 차지하는 칸 수 가로x세로. 안 주면 그림 크기÷64',
     '  --anim 4x4           (--whole과 함께) 프레임이 가로x세로 격자로 모인 애니메이션 시트. 프레임 한 장이 --size 칸',
@@ -198,7 +203,7 @@ function main(argv) {
     warnings = checkImage(png, opts.cell, opts.whole ? size : null);
   }
   for (const w of warnings) console.log('⚠ ' + w);
-  const solid = opts.solid === undefined ? opts.layer === 'objects' : opts.solid === 'true';
+  const solid = opts.solid === undefined ? defaultSolid(opts.layer) : opts.solid === 'true';
   const category = opts.category || (opts.layer === 'floor' ? '바닥' : '물건');
   const names = (opts.names || '').split(',').map((s) => s.trim());
   fs.mkdirSync(opts.out, { recursive: true });
@@ -222,5 +227,5 @@ function main(argv) {
   for (const e of entries) console.log(formatEntry(e));
 }
 
-module.exports = { checkImage, checkAnimSheet, sliceSheet, wholeEntry, averageColor, formatEntry };
+module.exports = { defaultSolid, checkImage, checkAnimSheet, sliceSheet, wholeEntry, averageColor, formatEntry };
 if (require.main === module) main(process.argv.slice(2));
